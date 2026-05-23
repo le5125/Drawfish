@@ -150,7 +150,7 @@
     box-shadow: inset -1px 0 2px rgba(0,0,0,0.3);
   }
 
-  /* ===== 魚 — 修正版：只有 bob 上下浮沉，不再有 swim 旋轉（會造成後退錯覺） ===== */
+  /* ===== 魚 — 修正版：純位移，無 transition（避免卡頓和變扁） ===== */
   .fish-wrap {
     position: absolute;
     pointer-events: auto;
@@ -158,12 +158,19 @@
     will-change: transform;
     z-index: 3;
     left: 0; top: 0;
-    transition: transform 0.6s ease-in-out;
+    /* 不要在這裡放 transition！會跟每幀的 transform 衝突 */
   }
   .fish-wrap:hover { filter: brightness(1.15); }
 
+  /* 翻面層：翻轉時有平滑動畫，但不影響位置 */
+  .fish-flip {
+    transition: transform 0.5s ease-in-out;
+    will-change: transform;
+  }
+
   .fish-bob {
     animation: bob 3s ease-in-out infinite alternate;
+    will-change: transform;
   }
   @keyframes bob {
     0%   { transform: translateY(-5px); }
@@ -1027,13 +1034,13 @@ import {
    ⚠️ Firebase Config — 從 Firebase Console 取得後填入
    ============================================================ */
 const firebaseConfig = {
-  apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
-  authDomain:        "drawfish-81c9d.firebaseapp.com",
-  databaseURL:       "https://drawfish-81c9d-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "drawfish-81c9d",
-  storageBucket:     "drawfish-81c9d.firebasestorage.app",
-  messagingSenderId: "1034101697689",
-  appId:             "1:1034101697689:web:816eafa3f8665aac5a5c08"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 
 const isConfigured = !firebaseConfig.apiKey.startsWith("YOUR_");
@@ -1176,9 +1183,15 @@ const activeFishes = [];
 function releaseFish(fishData) {
   const { id, image, headDirection = 'left' } = fishData;
 
+  // 外層：負責 x 位置（每幀更新，無 transition，避免變扁）
   const wrap = document.createElement('div');
   wrap.className = 'fish-wrap';
 
+  // 中層：負責翻面（有平滑 transition）
+  const flipLayer = document.createElement('div');
+  flipLayer.className = 'fish-flip';
+
+  // 內層：負責上下浮沉（CSS animation）
   const bobLayer = document.createElement('div');
   bobLayer.className = 'fish-bob';
 
@@ -1193,7 +1206,8 @@ function releaseFish(fishData) {
   img.style.height = size + 'px';
 
   bobLayer.appendChild(img);
-  wrap.appendChild(bobLayer);
+  flipLayer.appendChild(bobLayer);
+  wrap.appendChild(flipLayer);
 
   const topVh = 12 + Math.random() * 55;
   wrap.style.top = topVh + 'vh';
@@ -1204,17 +1218,20 @@ function releaseFish(fishData) {
   const screenW = window.innerWidth;
   const startFromRight = (headDirection === 'left');
   const fish = {
-    id, el: wrap, size,
+    id,
+    el: wrap,
+    flipEl: flipLayer,
+    size,
     x: startFromRight ? screenW - size : 0,
-    y: window.innerHeight * (topVh / 100), // 用於飼料碰撞
+    y: window.innerHeight * (topVh / 100),
     direction: startFromRight ? -1 : 1,
-    speed: 140 + Math.random() * 100, // 顯著加快：140~240 px/秒
+    speed: 180 + Math.random() * 120, // 加快：180~300 px/秒
     headDirection,
     flipped: false,
     crossings: 0,
     maxCrossings: 6,
     alive: true,
-    targetFood: null, // 鎖定的飼料
+    targetFood: null,
   };
 
   wrap.addEventListener('click', (e) => {
@@ -1223,18 +1240,23 @@ function releaseFish(fishData) {
   });
 
   updateFishFacing(fish);
-  updateFishTransform(fish);
+  updateFishPosition(fish);
   activeFishes.push(fish);
 }
 
 function updateFishFacing(fish) {
   const movingRight = fish.direction > 0;
   const headRight = fish.headDirection === 'right';
-  fish.flipped = (movingRight !== headRight);
+  const shouldFlip = (movingRight !== headRight);
+  if (shouldFlip !== fish.flipped) {
+    fish.flipped = shouldFlip;
+    // 翻面只在 flipEl，且只有改變時才寫入（有 transition 會自動平滑）
+    fish.flipEl.style.transform = shouldFlip ? 'scaleX(-1)' : 'scaleX(1)';
+  }
 }
-function updateFishTransform(fish) {
-  const scaleX = fish.flipped ? -1 : 1;
-  fish.el.style.transform = `translateX(${fish.x}px) scaleX(${scaleX})`;
+function updateFishPosition(fish) {
+  // 位置只動 wrap，用 translate3d 觸發 GPU 加速、無 transition
+  fish.el.style.transform = `translate3d(${fish.x}px, 0, 0)`;
 }
 
 let lastTime = performance.now();
@@ -1295,7 +1317,7 @@ function animateLoop(now) {
       updateFishFacing(fish);
       if (fish.crossings >= fish.maxCrossings) { removeFish(fish, i); continue; }
     }
-    updateFishTransform(fish);
+    updateFishPosition(fish);
   }
 
   // 飼料更新
