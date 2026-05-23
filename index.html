@@ -150,27 +150,36 @@
     box-shadow: inset -1px 0 2px rgba(0,0,0,0.3);
   }
 
-  /* ===== 魚 — 修正版：純位移，無 transition（避免卡頓和變扁） ===== */
+  /* ===== 魚 — 回歸純 CSS animation，瀏覽器自己處理就順 ===== */
   .fish-wrap {
     position: absolute;
     pointer-events: auto;
     cursor: pointer;
-    will-change: transform;
     z-index: 3;
-    left: 0; top: 0;
-    /* 不要在這裡放 transition！會跟每幀的 transform 衝突 */
   }
   .fish-wrap:hover { filter: brightness(1.15); }
 
-  /* 翻面層：翻轉時有平滑動畫，但不影響位置 */
-  .fish-flip {
-    transition: transform 0.5s ease-in-out;
-    will-change: transform;
+  /* 從右游到左（頭朝左的魚） */
+  .fish-wrap.swim-left {
+    animation: swimLeft linear forwards;
+  }
+  @keyframes swimLeft {
+    from { transform: translateX(100vw); }
+    to   { transform: translateX(-200px); }
   }
 
+  /* 從左游到右（頭朝右的魚） */
+  .fish-wrap.swim-right {
+    animation: swimRight linear forwards;
+  }
+  @keyframes swimRight {
+    from { transform: translateX(-200px); }
+    to   { transform: translateX(100vw); }
+  }
+
+  /* 上下浮沉 */
   .fish-bob {
     animation: bob 3s ease-in-out infinite alternate;
-    will-change: transform;
   }
   @keyframes bob {
     0%   { transform: translateY(-5px); }
@@ -755,14 +764,11 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     pointer-events: none;
     z-index: 4;
-    will-change: transform;
+    animation: foodFall linear forwards;
   }
-  .food.eaten {
-    animation: eatPop 0.3s ease-out forwards;
-  }
-  @keyframes eatPop {
-    0%   { transform: scale(1); opacity: 1; }
-    100% { transform: scale(2); opacity: 0; }
+  @keyframes foodFall {
+    0%   { transform: translate(0, 0) rotate(0); opacity: 1; }
+    100% { transform: translate(var(--drift, 0), 75vh) rotate(360deg); opacity: 0.6; }
   }
 
   #toast {
@@ -1034,13 +1040,13 @@ import {
    ⚠️ Firebase Config — 從 Firebase Console 取得後填入
    ============================================================ */
 const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId:         "YOUR_PROJECT",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+   apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
+  authDomain:        "drawfish-81c9d.firebaseapp.com",
+  databaseURL:       "https://drawfish-81c9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "drawfish-81c9d",
+  storageBucket:     "drawfish-81c9d.firebasestorage.app",
+  messagingSenderId: "1034101697689",
+  appId:             "1:1034101697689:web:816eafa3f8665aac5a5c08"
 };
 
 const isConfigured = !firebaseConfig.apiKey.startsWith("YOUR_");
@@ -1176,22 +1182,21 @@ function spawnCorals() {
 spawnBubbles(); spawnPlants(); spawnAnemones(); spawnCorals();
 
 /* ============================================================
-   魚兒動畫系統 — 純位移，無旋轉（不會有後退感）
+   魚兒動畫 — 純 CSS animation，瀏覽器自己跑就順
+   依頭朝向決定游動方向：
+   - 頭朝左 → 從右游到左
+   - 頭朝右 → 從左游到右
    ============================================================ */
-const activeFishes = [];
 
 function releaseFish(fishData) {
   const { id, image, headDirection = 'left' } = fishData;
 
-  // 外層：負責 x 位置（每幀更新，無 transition，避免變扁）
   const wrap = document.createElement('div');
   wrap.className = 'fish-wrap';
+  wrap.dataset.fishId = id;
+  // 依頭朝向決定要播哪個動畫
+  wrap.classList.add(headDirection === 'left' ? 'swim-left' : 'swim-right');
 
-  // 中層：負責翻面（有平滑 transition）
-  const flipLayer = document.createElement('div');
-  flipLayer.className = 'fish-flip';
-
-  // 內層：負責上下浮沉（CSS animation）
   const bobLayer = document.createElement('div');
   bobLayer.className = 'fish-bob';
 
@@ -1206,196 +1211,55 @@ function releaseFish(fishData) {
   img.style.height = size + 'px';
 
   bobLayer.appendChild(img);
-  flipLayer.appendChild(bobLayer);
-  wrap.appendChild(flipLayer);
+  wrap.appendChild(bobLayer);
 
+  // 隨機高度
   const topVh = 12 + Math.random() * 55;
   wrap.style.top = topVh + 'vh';
+
+  // 隨機游動速度（穿越螢幕所需時間 8~16 秒）
+  const swimDuration = 8 + Math.random() * 8;
+  wrap.style.animationDuration = swimDuration + 's';
+
+  // 上下浮沉延遲隨機
   bobLayer.style.animationDelay = (Math.random() * 2) + 's';
 
-  aquarium.appendChild(wrap);
-
-  const screenW = window.innerWidth;
-  const startFromRight = (headDirection === 'left');
-  const fish = {
-    id,
-    el: wrap,
-    flipEl: flipLayer,
-    size,
-    x: startFromRight ? screenW - size : 0,
-    y: window.innerHeight * (topVh / 100),
-    direction: startFromRight ? -1 : 1,
-    speed: 180 + Math.random() * 120, // 加快：180~300 px/秒
-    headDirection,
-    flipped: false,
-    crossings: 0,
-    maxCrossings: 6,
-    alive: true,
-    targetFood: null,
-  };
-
+  // 點擊浮卡
   wrap.addEventListener('click', (e) => {
     e.stopPropagation();
     showFishCard(id, e.clientX, e.clientY);
   });
 
-  updateFishFacing(fish);
-  updateFishPosition(fish);
-  activeFishes.push(fish);
-}
-
-function updateFishFacing(fish) {
-  const movingRight = fish.direction > 0;
-  const headRight = fish.headDirection === 'right';
-  const shouldFlip = (movingRight !== headRight);
-  if (shouldFlip !== fish.flipped) {
-    fish.flipped = shouldFlip;
-    // 翻面只在 flipEl，且只有改變時才寫入（有 transition 會自動平滑）
-    fish.flipEl.style.transform = shouldFlip ? 'scaleX(-1)' : 'scaleX(1)';
-  }
-}
-function updateFishPosition(fish) {
-  // 位置只動 wrap，用 translate3d 觸發 GPU 加速、無 transition
-  fish.el.style.transform = `translate3d(${fish.x}px, 0, 0)`;
-}
-
-let lastTime = performance.now();
-function animateLoop(now) {
-  const dt = Math.min((now - lastTime) / 1000, 0.1);
-  lastTime = now;
-  const screenW = window.innerWidth;
-
-  for (let i = activeFishes.length - 1; i >= 0; i--) {
-    const fish = activeFishes[i];
-    if (!fish.alive) continue;
-
-    // ===== 飼料追蹤 =====
-    // 鎖定的飼料消失了 → 解鎖
-    if (fish.targetFood && !fish.targetFood.alive) fish.targetFood = null;
-    // 找最近的飼料（在 350px 內）
-    if (!fish.targetFood) {
-      let nearest = null, minDist = 350;
-      for (const food of activeFood) {
-        if (!food.alive) continue;
-        const dx = food.x - (fish.x + fish.size / 2);
-        const dy = food.y - fish.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < minDist) { minDist = dist; nearest = food; }
-      }
-      if (nearest) fish.targetFood = nearest;
+  // 游完了自動消失
+  wrap.addEventListener('animationend', (e) => {
+    if (e.animationName === 'swimLeft' || e.animationName === 'swimRight') {
+      wrap.remove();
     }
+  });
 
-    if (fish.targetFood) {
-      // 朝飼料方向游
-      const dx = fish.targetFood.x - (fish.x + fish.size / 2);
-      const newDir = dx > 0 ? 1 : -1;
-      if (newDir !== fish.direction) {
-        fish.direction = newDir;
-        updateFishFacing(fish);
-      }
-      // 接近吃掉
-      const dist = Math.abs(dx);
-      if (dist < fish.size * 0.6) {
-        fish.targetFood.eat();
-        fish.targetFood = null;
-      }
-    }
-
-    fish.x += fish.direction * fish.speed * dt;
-
-    // 邊界處理
-    if (fish.x + fish.size >= screenW) {
-      fish.x = screenW - fish.size;
-      fish.direction = -1;
-      fish.crossings++;
-      updateFishFacing(fish);
-      if (fish.crossings >= fish.maxCrossings) { removeFish(fish, i); continue; }
-    } else if (fish.x <= 0) {
-      fish.x = 0;
-      fish.direction = 1;
-      fish.crossings++;
-      updateFishFacing(fish);
-      if (fish.crossings >= fish.maxCrossings) { removeFish(fish, i); continue; }
-    }
-    updateFishPosition(fish);
-  }
-
-  // 飼料更新
-  updateFoodPhysics(dt);
-
-  requestAnimationFrame(animateLoop);
+  aquarium.appendChild(wrap);
 }
-requestAnimationFrame(animateLoop);
-
-function removeFish(fish, idx) {
-  fish.alive = false;
-  fish.el.style.transition = 'opacity 1s';
-  fish.el.style.opacity = '0';
-  setTimeout(() => fish.el.remove(), 1000);
-  activeFishes.splice(idx, 1);
-}
-
-window.addEventListener('resize', () => {
-  const screenW = window.innerWidth;
-  for (const f of activeFishes) {
-    if (f.x + f.size > screenW) f.x = screenW - f.size;
-    f.y = window.innerHeight * (parseFloat(f.el.style.top) / 100);
-  }
-});
 
 /* ============================================================
    飼料系統 — 會被魚吃掉
    ============================================================ */
-const activeFood = [];
-
+/* ============================================================
+   飼料系統（純 CSS animation）
+   ============================================================ */
 function spawnFood(clickX, clickY) {
   const count = 4 + Math.floor(Math.random() * 3);
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className = 'food';
-    const x = clickX + (Math.random() - 0.5) * 30;
-    const y = clickY + (Math.random() - 0.5) * 10;
-    el.style.left = '0px';
-    el.style.top = '0px';
+    const startX = clickX + (Math.random() - 0.5) * 30;
+    const startY = clickY + (Math.random() - 0.5) * 10;
+    el.style.left = startX + 'px';
+    el.style.top = startY + 'px';
+    const drift = (Math.random() - 0.5) * 100;
+    el.style.setProperty('--drift', drift + 'px');
+    el.style.animationDuration = (6 + Math.random() * 4) + 's';
     aquarium.appendChild(el);
-
-    const food = {
-      el, x, y,
-      vy: 20 + Math.random() * 20, // 沉降速度 px/秒
-      drift: (Math.random() - 0.5) * 30, // 水平飄移
-      alive: true,
-      bornTime: performance.now(),
-      eat() {
-        if (!this.alive) return;
-        this.alive = false;
-        this.el.classList.add('eaten');
-        setTimeout(() => this.el.remove(), 300);
-      }
-    };
-    activeFood.push(food);
-    el.style.transform = `translate(${x}px, ${y}px)`;
-  }
-}
-
-function updateFoodPhysics(dt) {
-  const seabedY = window.innerHeight * 0.85; // 海床位置
-  for (let i = activeFood.length - 1; i >= 0; i--) {
-    const food = activeFood[i];
-    if (!food.alive) {
-      // 等淡出動畫
-      if (!food.el.parentNode) activeFood.splice(i, 1);
-      continue;
-    }
-    food.y += food.vy * dt;
-    food.x += Math.sin(performance.now() / 600 + food.bornTime) * food.drift * dt;
-    food.el.style.transform = `translate(${food.x}px, ${food.y}px)`;
-
-    // 沉到海床或活太久 → 消失
-    if (food.y > seabedY || performance.now() - food.bornTime > 15000) {
-      food.alive = false;
-      food.el.classList.add('eaten');
-      setTimeout(() => food.el.remove(), 300);
-    }
+    setTimeout(() => el.remove(), 11000);
   }
 }
 
@@ -1433,12 +1297,8 @@ if (isConfigured) {
   onChildRemoved(fishesRef, (snap) => {
     const id = snap.key;
     delete fishDB[id];
-    for (let i = activeFishes.length - 1; i >= 0; i--) {
-      if (activeFishes[i].id === id) {
-        activeFishes[i].el.remove();
-        activeFishes.splice(i, 1);
-      }
-    }
+    // 把畫面上正在游的同 id 魚也移除
+    aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`).forEach(el => el.remove());
     if (currentCardFishId === id) hideFishCard();
   });
 }
@@ -1826,12 +1686,7 @@ async function deleteFish(id, name) {
   if (!confirm(`確定要刪除「${name}」嗎？\n排行榜上也會一起消失喔。`)) return;
   if (!isConfigured) {
     delete fishDB[id];
-    for (let i = activeFishes.length - 1; i >= 0; i--) {
-      if (activeFishes[i].id === id) {
-        activeFishes[i].el.remove();
-        activeFishes.splice(i, 1);
-      }
-    }
+    aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`).forEach(el => el.remove());
     renderList();
     showToast(`「${name}」已刪除`);
     return;
