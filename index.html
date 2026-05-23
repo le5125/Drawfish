@@ -1027,12 +1027,13 @@ import {
    ⚠️ Firebase Config — 從 Firebase Console 取得後填入
    ============================================================ */
 const firebaseConfig = {
-  apiKey: "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
-  authDomain: "drawfish-81c9d.firebaseapp.com",
-  projectId: "drawfish-81c9d",
-  storageBucket: "drawfish-81c9d.firebasestorage.app",
+  apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
+  authDomain:        "drawfish-81c9d.firebaseapp.com",
+  databaseURL:       "https://drawfish-81c9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "drawfish-81c9d",
+  storageBucket:     "drawfish-81c9d.firebasestorage.app",
   messagingSenderId: "1034101697689",
-  appId: "1:1034101697689:web:816eafa3f8665aac5a5c08"
+  appId:             "1:1034101697689:web:816eafa3f8665aac5a5c08"
 };
 
 const isConfigured = !firebaseConfig.apiKey.startsWith("YOUR_");
