@@ -159,22 +159,31 @@
   }
   .fish-wrap:hover { filter: brightness(1.15); }
 
-  /* 從右游到左（頭朝左的魚） */
+  /* 頭朝左的魚：先從右往左游，再翻身往右游，這算一個來回。共 3 個來回。 */
   .fish-wrap.swim-left {
-    animation: swimLeft linear forwards;
+    animation: swimRoundLeft linear forwards;
+    animation-iteration-count: 3;
   }
-  @keyframes swimLeft {
-    from { transform: translateX(100vw); }
-    to   { transform: translateX(-200px); }
+  @keyframes swimRoundLeft {
+    /* 第一階段：頭朝左，從右游到左 */
+    0%     { transform: translateX(calc(100vw - 100px)) scaleX(1); }
+    49.9%  { transform: translateX(0) scaleX(1); }
+    /* 翻身（瞬間） */
+    50%    { transform: translateX(0) scaleX(-1); }
+    /* 第二階段：頭朝右（鏡像後），從左游到右 */
+    100%   { transform: translateX(calc(100vw - 100px)) scaleX(-1); }
   }
 
-  /* 從左游到右（頭朝右的魚） */
+  /* 頭朝右的魚：先從左往右游，再翻身往左游 */
   .fish-wrap.swim-right {
-    animation: swimRight linear forwards;
+    animation: swimRoundRight linear forwards;
+    animation-iteration-count: 3;
   }
-  @keyframes swimRight {
-    from { transform: translateX(-200px); }
-    to   { transform: translateX(100vw); }
+  @keyframes swimRoundRight {
+    0%     { transform: translateX(0) scaleX(1); }
+    49.9%  { transform: translateX(calc(100vw - 100px)) scaleX(1); }
+    50%    { transform: translateX(calc(100vw - 100px)) scaleX(-1); }
+    100%   { transform: translateX(0) scaleX(-1); }
   }
 
   /* 上下浮沉 */
@@ -1040,7 +1049,7 @@ import {
    ⚠️ Firebase Config — 從 Firebase Console 取得後填入
    ============================================================ */
 const firebaseConfig = {
-   apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
+ apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
   authDomain:        "drawfish-81c9d.firebaseapp.com",
   databaseURL:       "https://drawfish-81c9d-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:         "drawfish-81c9d",
@@ -1217,12 +1226,16 @@ function releaseFish(fishData) {
   const topVh = 12 + Math.random() * 55;
   wrap.style.top = topVh + 'vh';
 
-  // 隨機游動速度（穿越螢幕所需時間 8~16 秒）
-  const swimDuration = 8 + Math.random() * 8;
-  wrap.style.animationDuration = swimDuration + 's';
+  // 一個來回（左→右 或 右→左 完整一次）的時間：12~20 秒
+  // 由於 iteration-count = 3，總共會跑 3 個來回
+  const roundDuration = 12 + Math.random() * 8;
+  wrap.style.animationDuration = roundDuration + 's';
 
   // 上下浮沉延遲隨機
   bobLayer.style.animationDelay = (Math.random() * 2) + 's';
+
+  // 註冊到「正在游的魚」集合（給飼料碰撞用）
+  swimmingFishes.add(wrap);
 
   // 點擊浮卡
   wrap.addEventListener('click', (e) => {
@@ -1230,10 +1243,13 @@ function releaseFish(fishData) {
     showFishCard(id, e.clientX, e.clientY);
   });
 
-  // 游完了自動消失
+  // 動畫結束（跑完 3 個來回）→ 淡出消失
   wrap.addEventListener('animationend', (e) => {
-    if (e.animationName === 'swimLeft' || e.animationName === 'swimRight') {
-      wrap.remove();
+    if (e.animationName === 'swimRoundLeft' || e.animationName === 'swimRoundRight') {
+      swimmingFishes.delete(wrap);
+      wrap.style.transition = 'opacity 1s';
+      wrap.style.opacity = '0';
+      setTimeout(() => wrap.remove(), 1000);
     }
   });
 
@@ -1241,10 +1257,47 @@ function releaseFish(fishData) {
 }
 
 /* ============================================================
+   飼料碰撞偵測：魚游過飼料時，飼料消失（看起來像被吃了）
+   ============================================================ */
+const swimmingFishes = new Set(); // 正在游的魚 wrap
+const activeFood = new Set();     // 還在掉的飼料元素
+
+// 每 100ms 檢查一次碰撞
+setInterval(() => {
+  if (activeFood.size === 0 || swimmingFishes.size === 0) return;
+
+  for (const food of activeFood) {
+    if (!food.parentNode) {
+      activeFood.delete(food);
+      continue;
+    }
+    const fr = food.getBoundingClientRect();
+    const fx = fr.left + fr.width / 2;
+    const fy = fr.top + fr.height / 2;
+
+    for (const fish of swimmingFishes) {
+      if (!fish.parentNode) continue;
+      const r = fish.getBoundingClientRect();
+      // 魚張開的「嘴巴範圍」(整個身體 + 一點 buffer)
+      if (fx >= r.left - 10 && fx <= r.right + 10 &&
+          fy >= r.top - 10  && fy <= r.bottom + 10) {
+        // 被吃了！讓飼料快速縮放消失
+        food.style.transition = 'transform 0.2s ease-out, opacity 0.2s';
+        food.style.transform += ' scale(0)';
+        food.style.opacity = '0';
+        setTimeout(() => food.remove(), 200);
+        activeFood.delete(food);
+        break;
+      }
+    }
+  }
+}, 100);
+
+/* ============================================================
    飼料系統 — 會被魚吃掉
    ============================================================ */
 /* ============================================================
-   飼料系統（純 CSS animation）
+   飼料系統（純 CSS animation + 碰撞偵測）
    ============================================================ */
 function spawnFood(clickX, clickY) {
   const count = 4 + Math.floor(Math.random() * 3);
@@ -1259,7 +1312,11 @@ function spawnFood(clickX, clickY) {
     el.style.setProperty('--drift', drift + 'px');
     el.style.animationDuration = (6 + Math.random() * 4) + 's';
     aquarium.appendChild(el);
-    setTimeout(() => el.remove(), 11000);
+    activeFood.add(el);
+    setTimeout(() => {
+      activeFood.delete(el);
+      el.remove();
+    }, 11000);
   }
 }
 
