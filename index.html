@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Drawfish — 全球互動水族箱</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --deep:        #1a6b9c;
+    --abyss:       #2a8bc4;
+    --mid:         #4eb3d9;
+    --shallow:     #8fd6e8;
+    --surface:     #c7ecf5;
+    --foam:        #ffffff;
+    --sun:         #fff6c4;
+    --coral:       #ff5a3c;
+    --ink:         #002844;
+    --gold:        #ffc857;
+    --display:     'Fraunces', Georgia, serif;
+    --mono:        'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: var(--display);
+    color: var(--foam);
+    background: var(--deep);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #aquarium {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% 0%, rgba(255,246,196,0.5) 0%, rgba(255,246,196,0) 55%),
+      linear-gradient(180deg, var(--surface) 0%, var(--shallow) 35%, var(--mid) 70%, var(--abyss) 100%);
+    overflow: hidden;
+    cursor: crosshair;
+  }
+
+  #aquarium::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 60px),
+      repeating-linear-gradient(65deg,  rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 2px, transparent 2px, transparent 90px);
+    mix-blend-mode: screen;
+    animation: caustics 18s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes caustics {
+    0%   { transform: translate(0, 0) scale(1); opacity: 0.7; }
+    100% { transform: translate(-40px, 30px) scale(1.05); opacity: 1; }
+  }
+
+  .bubble {
+    position: absolute;
+    bottom: -40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,255,255,0.15) 60%, transparent 70%);
+    pointer-events: none;
+    animation: bubbleRise linear infinite;
+  }
+  @keyframes bubbleRise {
+    0%   { transform: translate(0, 0) scale(0.6); opacity: 0; }
+    10%  { opacity: 0.7; }
+    50%  { transform: translate(20px, -50vh) scale(1); }
+    100% { transform: translate(-30px, -110vh) scale(0.8); opacity: 0; }
+  }
+
+  #seabed {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 18vh;
+    background:
+      radial-gradient(ellipse 30% 100% at 12% 100%, #0d3a5c 0%, transparent 70%),
+      radial-gradient(ellipse 35% 90%  at 42% 100%, #0d3a5c 0%, transparent 70%),
+      radial-gradient(ellipse 25% 110% at 72% 100%, #0d3a5c 0%, transparent 70%),
+      radial-gradient(ellipse 32% 80%  at 95% 100%, #0d3a5c 0%, transparent 70%),
+      linear-gradient(to top, #0d3a5c 0%, rgba(13, 58, 92, 0) 100%);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* ===== 水草 ===== */
+  .plant {
+    position: absolute;
+    bottom: 0;
+    transform-origin: bottom center;
+    z-index: 2;
+    pointer-events: none;
+    animation: plantSway 5s ease-in-out infinite alternate;
+  }
+  @keyframes plantSway {
+    0%   { transform: rotate(-4deg); }
+    100% { transform: rotate(5deg); }
+  }
+  .blade {
+    position: absolute;
+    bottom: 0;
+    border-radius: 50% 50% 8% 8% / 90% 90% 4% 4%;
+    transform-origin: bottom center;
+    background: linear-gradient(to top, #052f1a 0%, #0a5a2e 30%, #1a8a47 70%, #4dbd6c 100%);
+    box-shadow: inset -2px 0 4px rgba(0,0,0,0.3), inset 2px 0 4px rgba(255,255,255,0.15);
+    animation: bladeWave 4s ease-in-out infinite alternate;
+  }
+  @keyframes bladeWave {
+    0%   { transform: rotate(var(--start, -8deg)) scaleY(1); }
+    100% { transform: rotate(var(--end, 10deg))  scaleY(1.04); }
+  }
+
+  .anemone { position: absolute; bottom: 0; z-index: 2; pointer-events: none; }
+  .anemone .base {
+    position: absolute; bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 30px; height: 14px;
+    background: radial-gradient(ellipse at top, #c44a8a 0%, #7a2752 80%);
+    border-radius: 50% 50% 20% 20% / 70% 70% 30% 30%;
+  }
+  .tentacle {
+    position: absolute;
+    bottom: 8px;
+    width: 4px;
+    border-radius: 50% 50% 30% 30% / 80% 80% 20% 20%;
+    background: linear-gradient(to top, #b03a78 0%, #e878b0 80%, #ffb3d9 100%);
+    transform-origin: bottom center;
+    animation: tentacleWave 2.5s ease-in-out infinite alternate;
+  }
+  @keyframes tentacleWave {
+    0%   { transform: rotate(var(--ts, -15deg)) scaleY(1); }
+    100% { transform: rotate(var(--te, 15deg))  scaleY(1.08); }
+  }
+
+  .coral-rock { position: absolute; bottom: 0; z-index: 2; pointer-events: none; }
+  .coral-branch {
+    position: absolute; bottom: 0;
+    width: 8px;
+    background: linear-gradient(to top, #d2691e 0%, #ff8c42 60%, #ffb88c 100%);
+    border-radius: 50% 50% 20% 20%;
+    transform-origin: bottom center;
+    box-shadow: inset -1px 0 2px rgba(0,0,0,0.3);
+  }
+
+  /* ===== 魚 — 修正版：只有 bob 上下浮沉，不再有 swim 旋轉（會造成後退錯覺） ===== */
+  .fish-wrap {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    will-change: transform;
+    z-index: 3;
+    left: 0; top: 0;
+    transition: transform 0.6s ease-in-out;
+  }
+  .fish-wrap:hover { filter: brightness(1.15); }
+
+  .fish-bob {
+    animation: bob 3s ease-in-out infinite alternate;
+  }
+  @keyframes bob {
+    0%   { transform: translateY(-5px); }
+    100% { transform: translateY(6px); }
+  }
+
+  .fish-img {
+    display: block;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 14px rgba(0, 40, 68, 0.35));
+  }
+
+  /* ===== HUD ===== */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 18px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .brand {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    text-shadow: 0 2px 12px rgba(255, 255, 255, 0.5);
+    line-height: 1;
+  }
+  .brand .em { font-style: italic; font-weight: 500; color: var(--coral); }
+  .brand .sub {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-top: 6px;
+    opacity: 0.6;
+  }
+
+  .top-controls { display: flex; gap: 8px; pointer-events: auto; }
+  .pill-btn {
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--ink);
+    border: 1.5px solid rgba(0, 40, 68, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.15s, box-shadow 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pill-btn:hover {
+    background: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 40, 68, 0.15);
+  }
+  .pill-btn .icon { font-size: 16px; }
+
+  #summon {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: var(--coral);
+    color: #fff;
+    border: none;
+    padding: 16px 32px;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 14px 40px rgba(255, 90, 60, 0.5), 0 0 0 6px rgba(255, 90, 60, 0.15);
+    transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #summon:hover { transform: translateX(-50%) translateY(-3px) scale(1.03); }
+  #summon:active { transform: translateX(-50%) translateY(0) scale(0.98); }
+
+  /* ===== Modal ===== */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 40, 68, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .modal-bg.open { display: flex; opacity: 1; }
+
+  .modal {
+    background: linear-gradient(180deg, #fdfaf3 0%, #f5ede0 100%);
+    color: var(--ink);
+    border-radius: 20px;
+    padding: 18px 20px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 96vh;
+    overflow-y: auto;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+    transform: translateY(20px) scale(0.96);
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1);
+    position: relative;
+  }
+  .modal-bg.open .modal { transform: translateY(0) scale(1); }
+
+  /* 畫畫視窗特化：大寬度、避免捲動 */
+  #draw-modal .modal {
+    max-width: 880px;
+    max-height: 96vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .modal-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .modal-title em { font-weight: 500; color: var(--coral); }
+  .modal-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #7a8590;
+  }
+
+  .btn-close {
+    position: absolute;
+    top: 10px; right: 12px;
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    color: #7a8590;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+    z-index: 2;
+  }
+  .btn-close:hover { background: rgba(0, 40, 68, 0.08); color: var(--ink); }
+
+  /* ===== 畫畫工具列（在畫布上方） ===== */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #fff;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 8px rgba(0, 40, 68, 0.06);
+  }
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .toolbar-divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(0, 40, 68, 0.1);
+  }
+  .toolbar-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #7a8590;
+    margin-right: 2px;
+  }
+  .swatch {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: var(--ink); transform: scale(1.15); }
+  .tool-btn {
+    width: 32px; height: 32px;
+    border: 1.5px solid rgba(0, 40, 68, 0.15);
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.15s;
+    color: var(--ink);
+  }
+  .tool-btn:hover { background: #f5ede0; }
+  .tool-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .size-slider {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .size-slider input {
+    width: 80px;
+    accent-color: var(--coral);
+  }
+  .size-preview {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .size-preview-dot {
+    background: var(--ink);
+    border-radius: 50%;
+    transition: width 0.1s, height 0.1s;
+  }
+
+  /* ===== 畫布 ===== */
+  #canvas-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #e8f4f8 0%, #d4ebef 100%);
+    border: 2px dashed rgba(10, 90, 143, 0.25);
+    overflow: hidden;
+    cursor: crosshair;
+    touch-action: none;
+    flex-shrink: 0;
+  }
+  #canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  #canvas-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    color: rgba(10, 90, 143, 0.5);
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 16px;
+    transition: opacity 0.3s;
+  }
+  #canvas-placeholder .fish-icon { font-size: 36px; margin-bottom: 4px; opacity: 0.7; }
+  #canvas-wrap.has-drawing #canvas-placeholder { opacity: 0; }
+
+  .head-marker {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #7a8590;
+    cursor: pointer;
+    border: 1.5px solid rgba(0, 40, 68, 0.1);
+    transition: all 0.2s;
+    z-index: 5;
+  }
+  .head-marker:hover { color: var(--ink); }
+  .head-marker.active {
+    background: var(--coral);
+    color: #fff;
+    border-color: var(--coral);
+    box-shadow: 0 4px 14px rgba(255, 90, 60, 0.4);
+  }
+  .head-left  { left: 8px; }
+  .head-right { right: 8px; }
+  .head-arrow { font-size: 11px; }
+  .head-label { font-family: var(--display); font-weight: 700; font-size: 12px; }
+
+  /* ===== 底部列：名字 + 按鈕 ===== */
+  .bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .name-input {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1.5px solid rgba(0, 40, 68, 0.15);
+    border-radius: 12px;
+    font-family: var(--display);
+    font-size: 15px;
+    color: var(--ink);
+    background: #fff;
+    outline: none;
+    min-width: 0;
+  }
+  .name-input:focus { border-color: var(--coral); }
+  .head-quickpick {
+    display: flex;
+    background: #fff;
+    border: 1.5px solid rgba(0, 40, 68, 0.15);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .head-quickpick button {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 12px;
+    color: #7a8590;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+  }
+  .head-quickpick button.active {
+    background: var(--coral);
+    color: #fff;
+  }
+  .btn {
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: none;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid rgba(0, 40, 68, 0.2);
+  }
+  .btn-secondary:hover { background: rgba(0, 40, 68, 0.05); }
+  .btn-primary {
+    background: var(--ink);
+    color: #fff;
+    font-style: italic;
+    box-shadow: 0 8px 20px rgba(0, 40, 68, 0.25);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0, 40, 68, 0.35); }
+  .btn-primary:disabled { background: #9aa5b1; cursor: not-allowed; box-shadow: none; transform: none; }
+
+  /* ===== 列表 ===== */
+  .list-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    background: rgba(0, 40, 68, 0.06);
+    padding: 4px;
+    border-radius: 12px;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border-radius: 9px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    color: #7a8590;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .tab.active {
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 2px 6px rgba(0, 40, 68, 0.08);
+  }
+
+  .fish-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin: 0 -8px;
+    padding: 0 8px;
+  }
+  .fish-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 12px;
+    transition: background 0.15s;
+    border-bottom: 1px solid rgba(0, 40, 68, 0.06);
+  }
+  .fish-item:hover { background: rgba(0, 40, 68, 0.04); }
+  .fish-item:last-child { border-bottom: none; }
+  .rank-num {
+    font-family: var(--display);
+    font-weight: 700;
+    font-style: italic;
+    font-size: 20px;
+    color: #b8c2cc;
+    min-width: 36px;
+    text-align: center;
+  }
+  .item-thumb {
+    width: 52px; height: 52px;
+    object-fit: contain;
+    background: linear-gradient(135deg, #e8f4f8, #d4ebef);
+    border-radius: 10px;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #7a8590;
+    margin-top: 2px;
+    display: flex;
+    gap: 10px;
+  }
+  .item-meta .me-tag {
+    background: var(--coral);
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+  .item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .icon-btn {
+    width: 32px; height: 32px;
+    border: none;
+    background: rgba(0, 40, 68, 0.06);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.15s;
+    color: var(--ink);
+  }
+  .icon-btn:hover { background: rgba(0, 40, 68, 0.12); transform: scale(1.1); }
+  .icon-btn.danger:hover { background: #fee; color: #c0392b; }
+  .icon-btn.fav.active { background: var(--gold); color: var(--ink); }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #7a8590;
+    font-family: var(--display);
+    font-style: italic;
+  }
+  .empty-state .em-icon { font-size: 42px; margin-bottom: 12px; opacity: 0.5; }
+
+  /* ===== 點魚浮卡 ===== */
+  #fish-card {
+    position: fixed;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 20px 50px rgba(0, 40, 68, 0.3);
+    min-width: 230px;
+    transform: translate(-50%, -100%) translateY(-12px) scale(0.9);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    border: 1px solid rgba(0, 40, 68, 0.1);
+  }
+  #fish-card.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -100%) translateY(-12px) scale(1);
+  }
+  #fish-card::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 16px; height: 16px;
+    background: rgba(255, 255, 255, 0.98);
+    border-right: 1px solid rgba(0, 40, 68, 0.1);
+    border-bottom: 1px solid rgba(0, 40, 68, 0.1);
+  }
+  .card-name {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .card-score {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #7a8590;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 10px;
+  }
+  .card-actions { display: flex; gap: 6px; }
+  .card-btn {
+    flex: 1;
+    padding: 8px 6px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: rgba(0, 40, 68, 0.06);
+    color: var(--ink);
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    transition: background 0.15s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+  .card-btn:hover { background: rgba(0, 40, 68, 0.14); transform: translateY(-1px); }
+  .card-btn.liked { background: #d6f5e0; color: #2a9d4a; }
+  .card-btn.disliked { background: #fde0dd; color: #c0392b; }
+  .card-btn.fav { font-size: 14px; flex: 0 0 36px; }
+  .card-btn.fav.active { background: var(--gold); color: var(--ink); }
+
+  /* ===== 飼料 ===== */
+  .food {
+    position: absolute;
+    width: 9px; height: 9px;
+    background: radial-gradient(circle at 30% 30%, #ffd76e, #c98a1a);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    pointer-events: none;
+    z-index: 4;
+    will-change: transform;
+  }
+  .food.eaten {
+    animation: eatPop 0.3s ease-out forwards;
+  }
+  @keyframes eatPop {
+    0%   { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+
+  #toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0, 40, 68, 0.92);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 15px;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  #setup-banner {
+    position: fixed;
+    top: 78px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 90, 60, 0.95);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    z-index: 50;
+    max-width: 90vw;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    display: none;
+  }
+  #setup-banner.show { display: block; }
+
+  /* 手機豎屏提示 */
+  #rotate-prompt {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, #1a6b9c 0%, #002844 100%);
+    color: #fff;
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+  }
+  #rotate-prompt .phone {
+    width: 80px;
+    height: 140px;
+    border: 4px solid #fff;
+    border-radius: 16px;
+    position: relative;
+    margin-bottom: 32px;
+    animation: rotatePhone 2.4s ease-in-out infinite;
+  }
+  #rotate-prompt .phone::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 4px;
+    background: #fff;
+    border-radius: 2px;
+    opacity: 0.6;
+  }
+  @keyframes rotatePhone {
+    0%, 30%   { transform: rotate(0deg); }
+    60%, 100% { transform: rotate(-90deg); }
+  }
+  #rotate-prompt h2 {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  #rotate-prompt p {
+    font-family: var(--display);
+    font-size: 16px;
+    opacity: 0.85;
+    max-width: 320px;
+    line-height: 1.5;
+  }
+  #rotate-prompt .sub-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 18px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+  @media (max-width: 820px) and (orientation: portrait) {
+    #rotate-prompt { display: flex; }
+  }
+
+  /* 小視窗（橫向手機 / 縮小視窗 / 90% 縮放）優化 */
+  @media (max-height: 700px) {
+    #hud { padding: 12px 16px; }
+    .brand { font-size: 22px; }
+    .pill-btn { padding: 8px 12px; font-size: 13px; }
+    #summon { padding: 12px 24px; font-size: 16px; bottom: 16px; }
+    .modal { padding: 14px 16px; }
+    .modal-title { font-size: 19px; }
+    .modal-header { margin-bottom: 8px; }
+    .toolbar { padding: 6px 10px; gap: 8px; margin-bottom: 8px; }
+    .bottom-row { margin-top: 8px; }
+    .btn { padding: 10px 14px; }
+    .name-input { padding: 10px 12px; }
+    #draw-modal .modal { max-width: 95vw; }
+  }
+</style>
+</head>
+<body>
+
+<div id="setup-banner">⚠️ 請在程式碼底部填入 Firebase Config 才能正式上線（目前為本地預覽）</div>
+
+<div id="rotate-prompt">
+  <div class="phone"></div>
+  <h2>請把手機橫過來</h2>
+  <p>水族箱是寬版設計，<br>橫向使用體驗最棒！</p>
+  <div class="sub-hint">ROTATE YOUR DEVICE</div>
+</div>
+
+<div id="aquarium">
+  <div id="seabed"></div>
+</div>
+
+<header id="hud">
+  <div class="brand">
+    Draw<em>fish</em>
+    <span class="sub">A Global Aquarium</span>
+  </div>
+  <div class="top-controls">
+    <button class="pill-btn" id="open-leaderboard">
+      <span class="icon">🏆</span><span>排行榜</span>
+    </button>
+    <button class="pill-btn" id="open-mytank">
+      <span class="icon">🐠</span><span>我的魚缸</span>
+    </button>
+  </div>
+</header>
+
+<button id="summon">
+  <span style="font-size:22px">🐟</span>
+  <span>畫一隻魚 放生世界</span>
+</button>
+
+<div id="fish-card">
+  <div class="card-name" id="card-name">-</div>
+  <div class="card-score">
+    <span>👍 <span id="card-likes">0</span></span>
+    <span>👎 <span id="card-dislikes">0</span></span>
+    <span>= <span id="card-score">0</span> 分</span>
+  </div>
+  <div class="card-actions">
+    <button class="card-btn" id="card-like">👍 讚</button>
+    <button class="card-btn" id="card-dislike">👎 倒讚</button>
+    <button class="card-btn fav" id="card-fav" title="加入我的最愛">★</button>
+  </div>
+</div>
+
+<!-- ===== 畫畫視窗 ===== -->
+<div class="modal-bg" id="draw-modal">
+  <div class="modal">
+    <button class="btn-close" data-close="draw-modal">✕</button>
+    <div class="modal-header">
+      <div class="modal-title">畫一隻 <em>魚</em></div>
+      <div class="modal-hint">DRAW · NAME · RELEASE</div>
+    </div>
+
+    <!-- 工具列（畫布上方） -->
+    <div class="toolbar">
+      <div class="toolbar-group">
+        <span class="toolbar-label">色</span>
+        <div class="swatch active" data-color="#002844" style="background:#002844"></div>
+        <div class="swatch" data-color="#ff5a3c" style="background:#ff5a3c"></div>
+        <div class="swatch" data-color="#ffc857" style="background:#ffc857"></div>
+        <div class="swatch" data-color="#1ba0c8" style="background:#1ba0c8"></div>
+        <div class="swatch" data-color="#7c3aed" style="background:#7c3aed"></div>
+        <div class="swatch" data-color="#16a34a" style="background:#16a34a"></div>
+        <div class="swatch" data-color="#e11d48" style="background:#e11d48"></div>
+        <div class="swatch" data-color="#ffffff" style="background:#ffffff;border-color:#ccc"></div>
+      </div>
+      <div class="toolbar-divider"></div>
+      <div class="toolbar-group">
+        <span class="toolbar-label">工具</span>
+        <button class="tool-btn active" data-tool="pen" title="筆刷">✏️</button>
+        <button class="tool-btn" data-tool="eraser" title="橡皮擦">🧽</button>
+        <button class="tool-btn" data-tool="line" title="直線">📏</button>
+        <button class="tool-btn" data-tool="circle" title="圓形">⭕</button>
+        <button class="tool-btn" data-tool="rect" title="矩形">▢</button>
+      </div>
+      <div class="toolbar-divider"></div>
+      <div class="toolbar-group size-slider">
+        <span class="toolbar-label">粗</span>
+        <input type="range" id="brush-size" min="2" max="40" value="6">
+        <div class="size-preview"><div class="size-preview-dot" id="size-preview-dot"></div></div>
+      </div>
+    </div>
+
+    <!-- 畫布 -->
+    <div id="canvas-wrap">
+      <canvas id="canvas" width="1280" height="720"></canvas>
+      <div id="canvas-placeholder">
+        <div class="fish-icon">🎨</div>
+        <div>在這裡畫你的魚</div>
+      </div>
+      <div class="head-marker head-left active" data-head="left">
+        <span class="head-arrow">◀</span><span class="head-label">頭</span>
+      </div>
+      <div class="head-marker head-right" data-head="right">
+        <span class="head-label">頭</span><span class="head-arrow">▶</span>
+      </div>
+    </div>
+
+    <!-- 底部：名字 + 頭朝向 + 按鈕 -->
+    <div class="bottom-row">
+      <input type="text" class="name-input" id="fish-name" placeholder="幫牠取個名字（例如：小金）" maxlength="20">
+      <div class="head-quickpick">
+        <button data-head="left" class="active">← 頭</button>
+        <button data-head="right">頭 →</button>
+      </div>
+      <button class="btn btn-secondary" id="btn-clear">清除</button>
+      <button class="btn btn-primary" id="btn-submit">讓牠游動 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 排行榜 / 我的魚缸 ===== -->
+<div class="modal-bg" id="list-modal">
+  <div class="modal">
+    <button class="btn-close" data-close="list-modal">✕</button>
+    <div class="modal-header">
+      <div class="modal-title" id="list-title">排行榜</div>
+      <div class="modal-hint" id="list-hint">TOP FISHES</div>
+    </div>
+    <div class="list-tabs" id="my-tabs" style="display:none">
+      <div class="tab active" data-mytab="mine">我畫的</div>
+      <div class="tab" data-mytab="favorites">我的最愛</div>
+    </div>
+    <div class="fish-list" id="fish-list"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getDatabase, ref, push, remove,
+  onChildAdded, onChildChanged, onChildRemoved,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* ============================================================
+   ⚠️ Firebase Config — 從 Firebase Console 取得後填入
+   ============================================================ */
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+
+const isConfigured = !firebaseConfig.apiKey.startsWith("YOUR_");
+let db = null, fishesRef = null;
+
+if (isConfigured) {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  fishesRef = ref(db, 'fishes');
+} else {
+  document.getElementById('setup-banner').classList.add('show');
+}
+
+/* ============================================================
+   使用者識別（localStorage）+ 收藏 + 投票
+   ============================================================ */
+function getOrCreateUserId() {
+  let uid = localStorage.getItem('drawfish_uid');
+  if (!uid) {
+    uid = 'u_' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+    localStorage.setItem('drawfish_uid', uid);
+  }
+  return uid;
+}
+const USER_ID = getOrCreateUserId();
+
+function getFavorites() {
+  try { return JSON.parse(localStorage.getItem('drawfish_favs') || '[]'); } catch { return []; }
+}
+function setFavorites(arr) { localStorage.setItem('drawfish_favs', JSON.stringify(arr)); }
+function isFavorite(id) { return getFavorites().includes(id); }
+function toggleFavorite(id) {
+  const favs = getFavorites();
+  const idx = favs.indexOf(id);
+  if (idx >= 0) favs.splice(idx, 1); else favs.push(id);
+  setFavorites(favs);
+  return idx < 0;
+}
+function getVotes() {
+  try { return JSON.parse(localStorage.getItem('drawfish_votes') || '{}'); } catch { return {}; }
+}
+function setVote(id, type) {
+  const v = getVotes();
+  if (type) v[id] = type; else delete v[id];
+  localStorage.setItem('drawfish_votes', JSON.stringify(v));
+}
+
+const fishDB = {};
+
+/* ============================================================
+   水族箱裝飾
+   ============================================================ */
+const aquarium = document.getElementById('aquarium');
+
+function spawnBubbles() {
+  for (let i = 0; i < 18; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 4 + Math.random() * 14;
+    b.style.width = size + 'px';
+    b.style.height = size + 'px';
+    b.style.left = Math.random() * 100 + 'vw';
+    b.style.animationDuration = (8 + Math.random() * 10) + 's';
+    b.style.animationDelay = (Math.random() * 10) + 's';
+    aquarium.appendChild(b);
+  }
+}
+function spawnPlants() {
+  [4, 13, 22, 38, 52, 66, 78, 89, 96].forEach((leftVw) => {
+    const plant = document.createElement('div');
+    plant.className = 'plant';
+    plant.style.left = leftVw + 'vw';
+    plant.style.animationDuration = (4 + Math.random() * 3) + 's';
+    plant.style.animationDelay = (Math.random() * 2) + 's';
+    const baseHeight = 80 + Math.random() * 110;
+    const bladeCount = 4 + Math.floor(Math.random() * 4);
+    for (let j = 0; j < bladeCount; j++) {
+      const blade = document.createElement('div');
+      blade.className = 'blade';
+      const h = baseHeight * (0.65 + Math.random() * 0.4);
+      const w = 8 + Math.random() * 8;
+      const offset = (j - bladeCount / 2) * (3 + Math.random() * 3);
+      blade.style.height = h + 'px';
+      blade.style.width = w + 'px';
+      blade.style.left = offset + 'px';
+      blade.style.setProperty('--start', (-10 + Math.random() * 8) + 'deg');
+      blade.style.setProperty('--end',   (8 + Math.random() * 10) + 'deg');
+      blade.style.animationDuration = (3 + Math.random() * 3) + 's';
+      blade.style.animationDelay = (Math.random() * 2) + 's';
+      plant.appendChild(blade);
+    }
+    aquarium.appendChild(plant);
+  });
+}
+function spawnAnemones() {
+  [28, 60].forEach((leftVw) => {
+    const a = document.createElement('div');
+    a.className = 'anemone';
+    a.style.left = leftVw + 'vw';
+    const base = document.createElement('div');
+    base.className = 'base';
+    a.appendChild(base);
+    for (let i = 0; i < 9; i++) {
+      const t = document.createElement('div');
+      t.className = 'tentacle';
+      t.style.height = (18 + Math.random() * 16) + 'px';
+      t.style.left = (i * 3 - 13.5 + 15) + 'px';
+      t.style.setProperty('--ts', (-20 + Math.random() * 10) + 'deg');
+      t.style.setProperty('--te', (10 + Math.random() * 15) + 'deg');
+      t.style.animationDuration = (1.8 + Math.random() * 1.5) + 's';
+      t.style.animationDelay = (Math.random() * 1.5) + 's';
+      a.appendChild(t);
+    }
+    aquarium.appendChild(a);
+  });
+}
+function spawnCorals() {
+  [44, 82].forEach((leftVw) => {
+    const c = document.createElement('div');
+    c.className = 'coral-rock';
+    c.style.left = leftVw + 'vw';
+    for (let i = 0; i < 5; i++) {
+      const b = document.createElement('div');
+      b.className = 'coral-branch';
+      b.style.height = (30 + Math.random() * 35) + 'px';
+      b.style.left = (i * 6 - 15) + 'px';
+      b.style.transform = `rotate(${-15 + Math.random() * 30}deg)`;
+      c.appendChild(b);
+    }
+    aquarium.appendChild(c);
+  });
+}
+spawnBubbles(); spawnPlants(); spawnAnemones(); spawnCorals();
+
+/* ============================================================
+   魚兒動畫系統 — 純位移，無旋轉（不會有後退感）
+   ============================================================ */
+const activeFishes = [];
+
+function releaseFish(fishData) {
+  const { id, image, headDirection = 'left' } = fishData;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'fish-wrap';
+
+  const bobLayer = document.createElement('div');
+  bobLayer.className = 'fish-bob';
+
+  const img = document.createElement('img');
+  img.src = image;
+  img.className = 'fish-img';
+  img.draggable = false;
+
+  const scale = 0.7 + Math.random() * 0.7;
+  const size = 100 * scale;
+  img.style.width = size + 'px';
+  img.style.height = size + 'px';
+
+  bobLayer.appendChild(img);
+  wrap.appendChild(bobLayer);
+
+  const topVh = 12 + Math.random() * 55;
+  wrap.style.top = topVh + 'vh';
+  bobLayer.style.animationDelay = (Math.random() * 2) + 's';
+
+  aquarium.appendChild(wrap);
+
+  const screenW = window.innerWidth;
+  const startFromRight = (headDirection === 'left');
+  const fish = {
+    id, el: wrap, size,
+    x: startFromRight ? screenW - size : 0,
+    y: window.innerHeight * (topVh / 100), // 用於飼料碰撞
+    direction: startFromRight ? -1 : 1,
+    speed: 140 + Math.random() * 100, // 顯著加快：140~240 px/秒
+    headDirection,
+    flipped: false,
+    crossings: 0,
+    maxCrossings: 6,
+    alive: true,
+    targetFood: null, // 鎖定的飼料
+  };
+
+  wrap.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showFishCard(id, e.clientX, e.clientY);
+  });
+
+  updateFishFacing(fish);
+  updateFishTransform(fish);
+  activeFishes.push(fish);
+}
+
+function updateFishFacing(fish) {
+  const movingRight = fish.direction > 0;
+  const headRight = fish.headDirection === 'right';
+  fish.flipped = (movingRight !== headRight);
+}
+function updateFishTransform(fish) {
+  const scaleX = fish.flipped ? -1 : 1;
+  fish.el.style.transform = `translateX(${fish.x}px) scaleX(${scaleX})`;
+}
+
+let lastTime = performance.now();
+function animateLoop(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+  const screenW = window.innerWidth;
+
+  for (let i = activeFishes.length - 1; i >= 0; i--) {
+    const fish = activeFishes[i];
+    if (!fish.alive) continue;
+
+    // ===== 飼料追蹤 =====
+    // 鎖定的飼料消失了 → 解鎖
+    if (fish.targetFood && !fish.targetFood.alive) fish.targetFood = null;
+    // 找最近的飼料（在 350px 內）
+    if (!fish.targetFood) {
+      let nearest = null, minDist = 350;
+      for (const food of activeFood) {
+        if (!food.alive) continue;
+        const dx = food.x - (fish.x + fish.size / 2);
+        const dy = food.y - fish.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < minDist) { minDist = dist; nearest = food; }
+      }
+      if (nearest) fish.targetFood = nearest;
+    }
+
+    if (fish.targetFood) {
+      // 朝飼料方向游
+      const dx = fish.targetFood.x - (fish.x + fish.size / 2);
+      const newDir = dx > 0 ? 1 : -1;
+      if (newDir !== fish.direction) {
+        fish.direction = newDir;
+        updateFishFacing(fish);
+      }
+      // 接近吃掉
+      const dist = Math.abs(dx);
+      if (dist < fish.size * 0.6) {
+        fish.targetFood.eat();
+        fish.targetFood = null;
+      }
+    }
+
+    fish.x += fish.direction * fish.speed * dt;
+
+    // 邊界處理
+    if (fish.x + fish.size >= screenW) {
+      fish.x = screenW - fish.size;
+      fish.direction = -1;
+      fish.crossings++;
+      updateFishFacing(fish);
+      if (fish.crossings >= fish.maxCrossings) { removeFish(fish, i); continue; }
+    } else if (fish.x <= 0) {
+      fish.x = 0;
+      fish.direction = 1;
+      fish.crossings++;
+      updateFishFacing(fish);
+      if (fish.crossings >= fish.maxCrossings) { removeFish(fish, i); continue; }
+    }
+    updateFishTransform(fish);
+  }
+
+  // 飼料更新
+  updateFoodPhysics(dt);
+
+  requestAnimationFrame(animateLoop);
+}
+requestAnimationFrame(animateLoop);
+
+function removeFish(fish, idx) {
+  fish.alive = false;
+  fish.el.style.transition = 'opacity 1s';
+  fish.el.style.opacity = '0';
+  setTimeout(() => fish.el.remove(), 1000);
+  activeFishes.splice(idx, 1);
+}
+
+window.addEventListener('resize', () => {
+  const screenW = window.innerWidth;
+  for (const f of activeFishes) {
+    if (f.x + f.size > screenW) f.x = screenW - f.size;
+    f.y = window.innerHeight * (parseFloat(f.el.style.top) / 100);
+  }
+});
+
+/* ============================================================
+   飼料系統 — 會被魚吃掉
+   ============================================================ */
+const activeFood = [];
+
+function spawnFood(clickX, clickY) {
+  const count = 4 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'food';
+    const x = clickX + (Math.random() - 0.5) * 30;
+    const y = clickY + (Math.random() - 0.5) * 10;
+    el.style.left = '0px';
+    el.style.top = '0px';
+    aquarium.appendChild(el);
+
+    const food = {
+      el, x, y,
+      vy: 20 + Math.random() * 20, // 沉降速度 px/秒
+      drift: (Math.random() - 0.5) * 30, // 水平飄移
+      alive: true,
+      bornTime: performance.now(),
+      eat() {
+        if (!this.alive) return;
+        this.alive = false;
+        this.el.classList.add('eaten');
+        setTimeout(() => this.el.remove(), 300);
+      }
+    };
+    activeFood.push(food);
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  }
+}
+
+function updateFoodPhysics(dt) {
+  const seabedY = window.innerHeight * 0.85; // 海床位置
+  for (let i = activeFood.length - 1; i >= 0; i--) {
+    const food = activeFood[i];
+    if (!food.alive) {
+      // 等淡出動畫
+      if (!food.el.parentNode) activeFood.splice(i, 1);
+      continue;
+    }
+    food.y += food.vy * dt;
+    food.x += Math.sin(performance.now() / 600 + food.bornTime) * food.drift * dt;
+    food.el.style.transform = `translate(${food.x}px, ${food.y}px)`;
+
+    // 沉到海床或活太久 → 消失
+    if (food.y > seabedY || performance.now() - food.bornTime > 15000) {
+      food.alive = false;
+      food.el.classList.add('eaten');
+      setTimeout(() => food.el.remove(), 300);
+    }
+  }
+}
+
+/* ============================================================
+   Firebase 監聽
+   ============================================================ */
+if (isConfigured) {
+  onChildAdded(fishesRef, (snap) => {
+    const data = snap.val();
+    if (!data) return;
+    const id = snap.key;
+    fishDB[id] = {
+      id,
+      name: data.name || '無名小卒',
+      image: data.image,
+      headDirection: data.headDirection || 'left',
+      ownerId: data.ownerId || 'anonymous',
+      likes: data.likes || 0,
+      dislikes: data.dislikes || 0,
+      createdAt: data.createdAt || 0,
+    };
+    if (data.createdAt && (Date.now() - data.createdAt) < 60000) {
+      releaseFish(fishDB[id]);
+    }
+  });
+  onChildChanged(fishesRef, (snap) => {
+    const id = snap.key;
+    const data = snap.val();
+    if (fishDB[id] && data) {
+      fishDB[id].likes = data.likes || 0;
+      fishDB[id].dislikes = data.dislikes || 0;
+      if (currentCardFishId === id) refreshCard();
+    }
+  });
+  onChildRemoved(fishesRef, (snap) => {
+    const id = snap.key;
+    delete fishDB[id];
+    for (let i = activeFishes.length - 1; i >= 0; i--) {
+      if (activeFishes[i].id === id) {
+        activeFishes[i].el.remove();
+        activeFishes.splice(i, 1);
+      }
+    }
+    if (currentCardFishId === id) hideFishCard();
+  });
+}
+
+/* ============================================================
+   畫畫工具
+   ============================================================ */
+const summonBtn = document.getElementById('summon');
+const clearBtn  = document.getElementById('btn-clear');
+const submitBtn = document.getElementById('btn-submit');
+const canvas    = document.getElementById('canvas');
+const canvasWrap= document.getElementById('canvas-wrap');
+const brushSize = document.getElementById('brush-size');
+const sizePreviewDot = document.getElementById('size-preview-dot');
+const swatches  = document.querySelectorAll('.swatch');
+const toolBtns  = document.querySelectorAll('.tool-btn');
+const fishName  = document.getElementById('fish-name');
+const ctx       = canvas.getContext('2d');
+
+let drawing = false;
+let lastX = 0, lastY = 0;
+let startX = 0, startY = 0;
+let currentColor = '#002844';
+let currentTool = 'pen'; // pen | eraser | line | circle | rect
+let headDirection = 'left';
+let snapshot = null; // 形狀工具用的暫存
+
+// 粗細預覽
+function updateSizePreview() {
+  const s = Math.min(parseInt(brushSize.value), 22);
+  sizePreviewDot.style.width = s + 'px';
+  sizePreviewDot.style.height = s + 'px';
+  sizePreviewDot.style.background = currentColor === '#ffffff' ? '#ccc' : currentColor;
+}
+brushSize.addEventListener('input', updateSizePreview);
+
+// 顏色
+swatches.forEach(sw => {
+  sw.addEventListener('click', () => {
+    swatches.forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    currentColor = sw.dataset.color;
+    updateSizePreview();
+  });
+});
+
+// 工具
+toolBtns.forEach(b => {
+  b.addEventListener('click', () => {
+    toolBtns.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    currentTool = b.dataset.tool;
+  });
+});
+
+// 頭朝向（左右兩種同步切換）
+const headMarkers = document.querySelectorAll('.head-marker');
+const headQuickBtns = document.querySelectorAll('.head-quickpick button');
+function setHeadDirection(dir) {
+  headDirection = dir;
+  headMarkers.forEach(m => m.classList.toggle('active', m.dataset.head === dir));
+  headQuickBtns.forEach(b => b.classList.toggle('active', b.dataset.head === dir));
+}
+headMarkers.forEach(m => m.addEventListener('click', () => setHeadDirection(m.dataset.head)));
+headQuickBtns.forEach(b => b.addEventListener('click', () => setHeadDirection(b.dataset.head)));
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+summonBtn.addEventListener('click', () => {
+  clearCanvas();
+  fishName.value = '';
+  openModal('draw-modal');
+});
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', (e) => {
+    if (e.target === bg) bg.classList.remove('open');
+  });
+});
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const point = (e.touches && e.touches[0]) || e;
+  return {
+    x: (point.clientX - rect.left) * scaleX,
+    y: (point.clientY - rect.top) * scaleY
+  };
+}
+function getStrokeWidth() {
+  return brushSize.value * (canvas.width / canvasWrap.offsetWidth);
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  drawing = true;
+  const p = getPos(e);
+  lastX = p.x; lastY = p.y;
+  startX = p.x; startY = p.y;
+  canvasWrap.classList.add('has-drawing');
+
+  if (currentTool === 'pen' || currentTool === 'eraser') {
+    if (currentTool === 'eraser') {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, getStrokeWidth() / 2 + 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.beginPath();
+      ctx.fillStyle = currentColor;
+      ctx.arc(p.x, p.y, getStrokeWidth() / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    // 形狀工具：先存畫面
+    snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function moveDraw(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const p = getPos(e);
+  const sw = getStrokeWidth();
+
+  if (currentTool === 'pen') {
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = sw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  } else if (currentTool === 'eraser') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = sw + 10;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.restore();
+    lastX = p.x; lastY = p.y;
+  } else if (snapshot) {
+    // 還原 + 重畫形狀（橡皮筋效果）
+    ctx.putImageData(snapshot, 0, 0);
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = sw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (currentTool === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    } else if (currentTool === 'circle') {
+      const dx = p.x - startX, dy = p.y - startY;
+      const r = Math.sqrt(dx*dx + dy*dy);
+      ctx.beginPath();
+      ctx.arc(startX, startY, r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (currentTool === 'rect') {
+      ctx.beginPath();
+      ctx.rect(startX, startY, p.x - startX, p.y - startY);
+      ctx.stroke();
+    }
+  }
+}
+function endDraw() {
+  drawing = false;
+  snapshot = null;
+}
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', moveDraw);
+window.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove', moveDraw, { passive: false });
+canvas.addEventListener('touchend', endDraw);
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvasWrap.classList.remove('has-drawing');
+}
+clearBtn.addEventListener('click', clearCanvas);
+
+function canvasIsBlank() {
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let drawn = 0;
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] > 0) drawn++;
+    if (drawn > 50) return false;
+  }
+  return true;
+}
+
+function getTrimmedCanvas(srcCanvas) {
+  const w = srcCanvas.width, h = srcCanvas.height;
+  const data = srcCanvas.getContext('2d').getImageData(0, 0, w, h).data;
+  let top = h, left = w, right = 0, bottom = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = (y * w + x) * 4 + 3;
+      if (data[idx] > 0) {
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+      }
+    }
+  }
+  if (right < left || bottom < top) return null;
+  const pad = 12;
+  left   = Math.max(0, left - pad);
+  top    = Math.max(0, top - pad);
+  right  = Math.min(w - 1, right + pad);
+  bottom = Math.min(h - 1, bottom + pad);
+  const cw = right - left + 1;
+  const ch = bottom - top + 1;
+  const maxSide = 300;
+  const scale = Math.min(1, maxSide / Math.max(cw, ch));
+  const out = document.createElement('canvas');
+  out.width = Math.round(cw * scale);
+  out.height = Math.round(ch * scale);
+  out.getContext('2d').drawImage(srcCanvas, left, top, cw, ch, 0, 0, out.width, out.height);
+  return out;
+}
+
+submitBtn.addEventListener('click', async () => {
+  if (canvasIsBlank()) {
+    showToast('畫布是空的喔，先畫一隻魚吧 🐟');
+    return;
+  }
+  const name = (fishName.value || '').trim() || '無名小卒';
+  const trimmed = getTrimmedCanvas(canvas);
+  const dataUrl = trimmed.toDataURL('image/png');
+
+  if (!isConfigured) {
+    const localId = 'local_' + Date.now() + Math.random().toString(36).slice(2, 6);
+    const data = { id: localId, name, image: dataUrl, headDirection, ownerId: USER_ID, likes: 0, dislikes: 0, createdAt: Date.now() };
+    fishDB[localId] = data;
+    releaseFish(data);
+    closeModal('draw-modal');
+    showToast(`「${name}」（本地預覽）`);
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '放生中...';
+  try {
+    await push(fishesRef, {
+      name, image: dataUrl, headDirection,
+      ownerId: USER_ID,
+      likes: 0, dislikes: 0,
+      createdAt: Date.now()
+    });
+    closeModal('draw-modal');
+    showToast(`「${name}」游進大海了 🌊`);
+  } catch (err) {
+    console.error(err);
+    showToast('送出失敗，請檢查 Firebase 設定 😢');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = '讓牠游動 →';
+  }
+});
+
+updateSizePreview();
+
+/* ============================================================
+   排行榜 / 我的魚缸
+   ============================================================ */
+const listTitle = document.getElementById('list-title');
+const listHint  = document.getElementById('list-hint');
+const fishList  = document.getElementById('fish-list');
+const myTabs    = document.getElementById('my-tabs');
+let currentListMode = 'leaderboard';
+
+document.getElementById('open-leaderboard').addEventListener('click', () => {
+  currentListMode = 'leaderboard';
+  listTitle.innerHTML = '排行榜';
+  listHint.textContent = 'TOP FISHES';
+  myTabs.style.display = 'none';
+  renderList();
+  openModal('list-modal');
+});
+document.getElementById('open-mytank').addEventListener('click', () => {
+  currentListMode = 'mine';
+  listTitle.innerHTML = '我的<em>魚缸</em>';
+  listHint.textContent = 'MY TANK';
+  myTabs.style.display = 'flex';
+  myTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mytab === 'mine'));
+  renderList();
+  openModal('list-modal');
+});
+myTabs.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    myTabs.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    currentListMode = t.dataset.mytab;
+    renderList();
+  });
+});
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderList() {
+  let arr = Object.values(fishDB);
+  if (currentListMode === 'leaderboard') {
+    arr.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+    arr = arr.slice(0, 50);
+  } else if (currentListMode === 'mine') {
+    arr = arr.filter(f => f.ownerId === USER_ID).sort((a, b) => b.createdAt - a.createdAt);
+  } else if (currentListMode === 'favorites') {
+    const favs = getFavorites();
+    arr = arr.filter(f => favs.includes(f.id));
+  }
+  if (arr.length === 0) {
+    const emptyMsg = {
+      leaderboard: ['🏆', '還沒有魚兒上榜，快去畫一隻！'],
+      mine:        ['🐟', '你還沒畫過魚，按下方紅色按鈕開始！'],
+      favorites:   ['⭐', '你還沒收藏任何魚，點水族箱裡的魚加入吧！'],
+    }[currentListMode];
+    fishList.innerHTML = `<div class="empty-state"><div class="em-icon">${emptyMsg[0]}</div><div>${emptyMsg[1]}</div></div>`;
+    return;
+  }
+  fishList.innerHTML = '';
+  arr.forEach((fish, idx) => {
+    const item = document.createElement('div');
+    item.className = 'fish-item';
+    const isMine = fish.ownerId === USER_ID;
+    const score = fish.likes - fish.dislikes;
+    const fav = isFavorite(fish.id);
+    let rankHTML = '';
+    if (currentListMode === 'leaderboard') {
+      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1);
+      rankHTML = `<div class="rank-num">${medal}</div>`;
+    }
+    item.innerHTML = `
+      ${rankHTML}
+      <img class="item-thumb" src="${fish.image}" alt="">
+      <div class="item-info">
+        <div class="item-name">${escapeHTML(fish.name)} ${isMine ? '<span class="me-tag">我的</span>' : ''}</div>
+        <div class="item-meta">
+          <span>👍 ${fish.likes}</span>
+          <span>👎 ${fish.dislikes}</span>
+          <span>${score >= 0 ? '+' : ''}${score} 分</span>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="icon-btn release-btn" title="放進水族箱">🌊</button>
+        <button class="icon-btn fav ${fav ? 'active' : ''}" title="${fav ? '取消收藏' : '加到我的最愛'}">★</button>
+        ${isMine ? '<button class="icon-btn danger del-btn" title="刪除">🗑</button>' : ''}
+      </div>`;
+    item.querySelector('.release-btn').addEventListener('click', () => {
+      releaseFish(fish);
+      showToast(`「${fish.name}」游進魚缸了 🐟`);
+    });
+    item.querySelector('.fav').addEventListener('click', (e) => {
+      const nowFav = toggleFavorite(fish.id);
+      e.currentTarget.classList.toggle('active', nowFav);
+      e.currentTarget.title = nowFav ? '取消收藏' : '加到我的最愛';
+      if (currentListMode === 'favorites') renderList();
+    });
+    const delBtn = item.querySelector('.del-btn');
+    if (delBtn) delBtn.addEventListener('click', () => deleteFish(fish.id, fish.name));
+    fishList.appendChild(item);
+  });
+}
+
+async function deleteFish(id, name) {
+  if (!confirm(`確定要刪除「${name}」嗎？\n排行榜上也會一起消失喔。`)) return;
+  if (!isConfigured) {
+    delete fishDB[id];
+    for (let i = activeFishes.length - 1; i >= 0; i--) {
+      if (activeFishes[i].id === id) {
+        activeFishes[i].el.remove();
+        activeFishes.splice(i, 1);
+      }
+    }
+    renderList();
+    showToast(`「${name}」已刪除`);
+    return;
+  }
+  try {
+    await remove(ref(db, 'fishes/' + id));
+    showToast(`「${name}」已刪除`);
+    renderList();
+  } catch (err) {
+    console.error(err);
+    showToast('刪除失敗 😢');
+  }
+}
+
+/* ============================================================
+   點魚浮卡
+   ============================================================ */
+const fishCard       = document.getElementById('fish-card');
+const cardName       = document.getElementById('card-name');
+const cardLikes      = document.getElementById('card-likes');
+const cardDislikes   = document.getElementById('card-dislikes');
+const cardScore      = document.getElementById('card-score');
+const cardLikeBtn    = document.getElementById('card-like');
+const cardDislikeBtn = document.getElementById('card-dislike');
+const cardFavBtn     = document.getElementById('card-fav');
+let currentCardFishId = null;
+
+function showFishCard(id, x, y) {
+  const fish = fishDB[id];
+  if (!fish) return;
+  currentCardFishId = id;
+  const cardW = 250;
+  const clampedX = Math.max(cardW / 2 + 10, Math.min(window.innerWidth - cardW / 2 - 10, x));
+  fishCard.style.left = clampedX + 'px';
+  fishCard.style.top  = Math.max(180, y) + 'px';
+  refreshCard();
+  fishCard.classList.add('show');
+}
+function hideFishCard() {
+  currentCardFishId = null;
+  fishCard.classList.remove('show');
+}
+function refreshCard() {
+  const fish = fishDB[currentCardFishId];
+  if (!fish) return;
+  cardName.textContent = fish.name;
+  cardLikes.textContent = fish.likes;
+  cardDislikes.textContent = fish.dislikes;
+  const score = fish.likes - fish.dislikes;
+  cardScore.textContent = (score >= 0 ? '+' : '') + score;
+  const votes = getVotes();
+  const myVote = votes[currentCardFishId];
+  cardLikeBtn.classList.toggle('liked', myVote === 'like');
+  cardDislikeBtn.classList.toggle('disliked', myVote === 'dislike');
+  cardFavBtn.classList.toggle('active', isFavorite(currentCardFishId));
+}
+cardLikeBtn.addEventListener('click', () => {
+  if (!currentCardFishId) return;
+  voteFish(currentCardFishId, 'like', getVotes()[currentCardFishId]);
+});
+cardDislikeBtn.addEventListener('click', () => {
+  if (!currentCardFishId) return;
+  voteFish(currentCardFishId, 'dislike', getVotes()[currentCardFishId]);
+});
+cardFavBtn.addEventListener('click', () => {
+  if (!currentCardFishId) return;
+  const nowFav = toggleFavorite(currentCardFishId);
+  cardFavBtn.classList.toggle('active', nowFav);
+  showToast(nowFav ? '已加入我的最愛 ★' : '已取消收藏');
+});
+
+async function voteFish(id, type, currentVote) {
+  let likeDelta = 0, dislikeDelta = 0, newVote = type;
+  if (currentVote === type) {
+    if (type === 'like') likeDelta = -1; else dislikeDelta = -1;
+    newVote = null;
+  } else if (currentVote && currentVote !== type) {
+    if (type === 'like') { likeDelta = 1;  dislikeDelta = -1; }
+    else                 { likeDelta = -1; dislikeDelta = 1;  }
+  } else {
+    if (type === 'like') likeDelta = 1; else dislikeDelta = 1;
+  }
+  if (!isConfigured) {
+    if (!fishDB[id]) return;
+    fishDB[id].likes    = Math.max(0, fishDB[id].likes + likeDelta);
+    fishDB[id].dislikes = Math.max(0, fishDB[id].dislikes + dislikeDelta);
+    setVote(id, newVote);
+    refreshCard();
+    return;
+  }
+  try {
+    await runTransaction(ref(db, 'fishes/' + id), (data) => {
+      if (data === null) return data;
+      data.likes    = Math.max(0, (data.likes || 0)    + likeDelta);
+      data.dislikes = Math.max(0, (data.dislikes || 0) + dislikeDelta);
+      return data;
+    });
+    setVote(id, newVote);
+    refreshCard();
+  } catch (err) {
+    console.error(err);
+    showToast('投票失敗 😢');
+  }
+}
+
+aquarium.addEventListener('click', (e) => {
+  if (currentCardFishId) hideFishCard();
+  else spawnFood(e.clientX, e.clientY);
+});
+
+const toast = document.getElementById('toast');
+let toastTimer = null;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+window.__drawfish = { releaseFish, fishDB, USER_ID };
+</script>
+
+</body>
+</html>
