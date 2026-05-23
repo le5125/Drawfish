@@ -317,13 +317,27 @@
   }
   .modal-bg.open .modal { transform: translateY(0) scale(1); }
 
-  /* 畫畫視窗特化：大寬度、避免捲動 */
+  /* 畫畫視窗特化：高度撐滿可視範圍，內部 flex 自動配置 */
+  #draw-modal .modal-bg { padding: 8px; }
   #draw-modal .modal {
     max-width: 880px;
     max-height: 96vh;
+    height: auto;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    padding: 14px 16px;
+  }
+  #draw-modal .modal-header { margin-bottom: 8px; flex-shrink: 0; }
+  #draw-modal .toolbar { flex-shrink: 0; }
+  #draw-modal .bottom-row { flex-shrink: 0; margin-top: 8px; }
+  /* 畫布吃掉剩下的空間 */
+  #draw-modal #canvas-wrap {
+    flex: 1 1 auto;
+    aspect-ratio: auto;       /* 取消寬高比限制 */
+    min-height: 200px;        /* 至少 200px */
+    height: 100%;             /* 撐滿剩餘空間 */
+    width: 100%;
   }
 
   .modal-header {
@@ -607,84 +621,169 @@
     box-shadow: 0 2px 6px rgba(0, 40, 68, 0.08);
   }
 
+  /* ===== 排行榜 / 我的魚缸：卡片格狀 ===== */
+  #list-modal .modal { max-width: 720px; }
+
   .fish-list {
-    max-height: 60vh;
+    max-height: 65vh;
     overflow-y: auto;
-    margin: 0 -8px;
-    padding: 0 8px;
+    margin: 0 -4px;
+    padding: 0 4px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
   }
-  .fish-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px;
+  .fish-card {
+    background: #fff;
     border-radius: 12px;
-    transition: background 0.15s;
-    border-bottom: 1px solid rgba(0, 40, 68, 0.06);
+    padding: 8px;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 1px 3px rgba(0, 40, 68, 0.08);
+    cursor: pointer;
   }
-  .fish-item:hover { background: rgba(0, 40, 68, 0.04); }
-  .fish-item:last-child { border-bottom: none; }
-  .rank-num {
+  .fish-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 40, 68, 0.15);
+  }
+
+  /* 名次徽章（金銀銅） */
+  .rank-badge {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--ink);
     font-family: var(--display);
     font-weight: 700;
     font-style: italic;
-    font-size: 20px;
-    color: #b8c2cc;
-    min-width: 36px;
-    text-align: center;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 40, 68, 0.2);
+    z-index: 2;
   }
-  .item-thumb {
-    width: 52px; height: 52px;
-    object-fit: contain;
+  .rank-badge.rank-1 { background: var(--gold); }
+  .rank-badge.rank-2 { background: #d0d0d0; }
+  .rank-badge.rank-3 { background: #cd9168; color: #fff; }
+  .rank-badge.rank-other { background: #f5ede0; color: #7a8590; font-size: 12px; }
+
+  /* 縮圖區 */
+  .card-thumb-wrap {
+    width: 100%;
+    aspect-ratio: 1;
     background: linear-gradient(135deg, #e8f4f8, #d4ebef);
-    border-radius: 10px;
-    padding: 4px;
-    flex-shrink: 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 6px;
   }
-  .item-info { flex: 1; min-width: 0; }
-  .item-name {
+  .card-thumb {
+    max-width: 85%;
+    max-height: 85%;
+    object-fit: contain;
+  }
+
+  /* 名字 + 日期 */
+  .fc-name {
     font-family: var(--display);
     font-weight: 700;
-    font-size: 15px;
+    font-size: 14px;
     color: var(--ink);
+    text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.2;
   }
-  .item-meta {
+  .fc-name .me-mark {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--coral);
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .fc-date {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: #9aa5b1;
+    text-align: center;
+    margin-top: 2px;
+  }
+  .fc-score {
     font-family: var(--mono);
     font-size: 10px;
-    color: #7a8590;
+    text-align: center;
     margin-top: 2px;
+    font-weight: 500;
+    color: #002844;
+  }
+  .fc-score.negative { color: #c0392b; }
+  .fc-score.positive { color: #2a9d4a; }
+
+  /* 票數列 */
+  .fc-votes {
     display: flex;
-    gap: 10px;
+    justify-content: space-around;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 40, 68, 0.06);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #7a8590;
   }
-  .item-meta .me-tag {
-    background: var(--coral);
-    color: #fff;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 9px;
-    letter-spacing: 0.1em;
+  .fc-votes span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
   }
-  .item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* 動作按鈕（右上角懸浮） */
+  .fc-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 2;
+  }
+  .fish-card:hover .fc-actions {
+    opacity: 1;
+  }
+  /* 手機上常駐顯示動作按鈕（避免 hover 不到） */
+  @media (hover: none) {
+    .fc-actions { opacity: 1; }
+  }
   .icon-btn {
-    width: 32px; height: 32px;
+    width: 26px; height: 26px;
     border: none;
-    background: rgba(0, 40, 68, 0.06);
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background 0.15s, transform 0.15s;
     color: var(--ink);
+    box-shadow: 0 2px 4px rgba(0, 40, 68, 0.15);
   }
-  .icon-btn:hover { background: rgba(0, 40, 68, 0.12); transform: scale(1.1); }
+  .icon-btn:hover { background: #fff; transform: scale(1.1); }
   .icon-btn.danger:hover { background: #fee; color: #c0392b; }
   .icon-btn.fav.active { background: var(--gold); color: var(--ink); }
+
   .empty-state {
+    grid-column: 1 / -1;
     text-align: center;
     padding: 40px 20px;
     color: #7a8590;
@@ -692,6 +791,11 @@
     font-style: italic;
   }
   .empty-state .em-icon { font-size: 42px; margin-bottom: 12px; opacity: 0.5; }
+
+  /* 平板/手機 RWD：縮成 2 欄 */
+  @media (max-width: 640px) {
+    .fish-list { grid-template-columns: repeat(2, 1fr); }
+  }
 
   /* ===== 點魚浮卡 ===== */
   #fish-card {
@@ -1049,7 +1153,7 @@ import {
    ⚠️ Firebase Config — 從 Firebase Console 取得後填入
    ============================================================ */
 const firebaseConfig = {
- apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
+  apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
   authDomain:        "drawfish-81c9d.firebaseapp.com",
   databaseURL:       "https://drawfish-81c9d-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:         "drawfish-81c9d",
@@ -1197,7 +1301,21 @@ spawnBubbles(); spawnPlants(); spawnAnemones(); spawnCorals();
    - 頭朝右 → 從左游到右
    ============================================================ */
 
+const MAX_FISHES_IN_TANK = 40; // 同時在水族箱裡最多 40 條
+
 function releaseFish(fishData) {
+  // 上限保護：超過 40 條就把最舊的拿掉
+  const currentCount = aquarium.querySelectorAll('.fish-wrap').length;
+  if (currentCount >= MAX_FISHES_IN_TANK) {
+    const oldest = aquarium.querySelector('.fish-wrap');
+    if (oldest) {
+      swimmingFishes.delete(oldest);
+      oldest.style.transition = 'opacity 0.4s';
+      oldest.style.opacity = '0';
+      setTimeout(() => oldest.remove(), 400);
+    }
+  }
+
   const { id, image, headDirection = 'left' } = fishData;
 
   const wrap = document.createElement('div');
@@ -1697,45 +1815,75 @@ function renderList() {
   }
   fishList.innerHTML = '';
   arr.forEach((fish, idx) => {
-    const item = document.createElement('div');
-    item.className = 'fish-item';
+    const card = document.createElement('div');
+    card.className = 'fish-card';
     const isMine = fish.ownerId === USER_ID;
     const score = fish.likes - fish.dislikes;
     const fav = isFavorite(fish.id);
+
+    // 排名徽章
     let rankHTML = '';
     if (currentListMode === 'leaderboard') {
-      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1);
-      rankHTML = `<div class="rank-num">${medal}</div>`;
+      let rankCls = 'rank-other';
+      let rankText = (idx + 1);
+      if (idx === 0)      { rankCls = 'rank-1'; rankText = '🥇'; }
+      else if (idx === 1) { rankCls = 'rank-2'; rankText = '🥈'; }
+      else if (idx === 2) { rankCls = 'rank-3'; rankText = '🥉'; }
+      rankHTML = `<div class="rank-badge ${rankCls}">${rankText}</div>`;
     }
-    item.innerHTML = `
+
+    // 日期
+    const d = new Date(fish.createdAt || Date.now());
+    const dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+
+    // 分數樣式
+    const scoreCls = score > 0 ? 'positive' : score < 0 ? 'negative' : '';
+    const scoreStr = `評分：${score >= 0 ? '+' : ''}${score}`;
+
+    card.innerHTML = `
       ${rankHTML}
-      <img class="item-thumb" src="${fish.image}" alt="">
-      <div class="item-info">
-        <div class="item-name">${escapeHTML(fish.name)} ${isMine ? '<span class="me-tag">我的</span>' : ''}</div>
-        <div class="item-meta">
-          <span>👍 ${fish.likes}</span>
-          <span>👎 ${fish.dislikes}</span>
-          <span>${score >= 0 ? '+' : ''}${score} 分</span>
-        </div>
-      </div>
-      <div class="item-actions">
+      <div class="fc-actions">
         <button class="icon-btn release-btn" title="放進水族箱">🌊</button>
         <button class="icon-btn fav ${fav ? 'active' : ''}" title="${fav ? '取消收藏' : '加到我的最愛'}">★</button>
         ${isMine ? '<button class="icon-btn danger del-btn" title="刪除">🗑</button>' : ''}
-      </div>`;
-    item.querySelector('.release-btn').addEventListener('click', () => {
+      </div>
+      <div class="card-thumb-wrap">
+        <img class="card-thumb" src="${fish.image}" alt="">
+      </div>
+      <div class="fc-name">${isMine ? '<span class="me-mark"></span>' : ''}${escapeHTML(fish.name)}</div>
+      <div class="fc-date">${dateStr}</div>
+      <div class="fc-score ${scoreCls}">${scoreStr}</div>
+      <div class="fc-votes">
+        <span>👍 ${fish.likes}</span>
+        <span>👎 ${fish.dislikes}</span>
+      </div>
+    `;
+
+    // 點卡片本身（不是按鈕）= 放進魚缸
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.icon-btn')) return;
       releaseFish(fish);
       showToast(`「${fish.name}」游進魚缸了 🐟`);
     });
-    item.querySelector('.fav').addEventListener('click', (e) => {
+
+    card.querySelector('.release-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      releaseFish(fish);
+      showToast(`「${fish.name}」游進魚缸了 🐟`);
+    });
+    card.querySelector('.fav').addEventListener('click', (e) => {
+      e.stopPropagation();
       const nowFav = toggleFavorite(fish.id);
       e.currentTarget.classList.toggle('active', nowFav);
       e.currentTarget.title = nowFav ? '取消收藏' : '加到我的最愛';
       if (currentListMode === 'favorites') renderList();
     });
-    const delBtn = item.querySelector('.del-btn');
-    if (delBtn) delBtn.addEventListener('click', () => deleteFish(fish.id, fish.name));
-    fishList.appendChild(item);
+    const delBtn = card.querySelector('.del-btn');
+    if (delBtn) delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteFish(fish.id, fish.name);
+    });
+    fishList.appendChild(card);
   });
 }
 
