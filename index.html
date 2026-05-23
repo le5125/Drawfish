@@ -330,7 +330,7 @@
     min-width: 360px;
     min-height: 400px;
     width: 880px;
-    height: 90vh;
+    height: 85vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1377,7 +1377,7 @@ function releaseFish(fishData) {
 
   // 一個來回（左→右 或 右→左 完整一次）的時間：12~20 秒
   // 由於 iteration-count = 3，總共會跑 3 個來回
-  const roundDuration = 12 + Math.random() * 8;
+  const roundDuration = 20 + Math.random() * 8;
   wrap.style.animationDuration = roundDuration + 's';
 
   // 上下浮沉延遲隨機
