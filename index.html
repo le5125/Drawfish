@@ -317,26 +317,57 @@
   }
   .modal-bg.open .modal { transform: translateY(0) scale(1); }
 
-  /* 畫畫視窗特化：高度撐滿可視範圍，內部 flex 自動配置 */
-  #draw-modal .modal-bg { padding: 8px; }
+  /* 畫畫視窗特化：高度撐滿可視範圍，內部 flex 自動配置，右下角可拖動縮放 */
+  #draw-modal {
+    /* 不用 flex 置中（會跟 resize 衝突），改用絕對定位 */
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0 !important;
+  }
   #draw-modal .modal {
-    max-width: 880px;
+    max-width: 96vw;
     max-height: 96vh;
-    height: auto;
+    min-width: 360px;
+    min-height: 400px;
+    width: 880px;
+    height: 90vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     padding: 14px 16px;
+    resize: both;       /* 啟用右下角拖動縮放 */
+    /* 預設置中（用 margin auto 達成，resize 後 margin 失效，元素停在拖到的位置） */
+    margin: 2vh auto;
+  }
+  /* 右下角拖動把手強化視覺 */
+  #draw-modal .modal::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    background:
+      linear-gradient(135deg,
+        transparent 0%, transparent 35%,
+        var(--coral) 35%, var(--coral) 40%,
+        transparent 40%, transparent 55%,
+        var(--coral) 55%, var(--coral) 60%,
+        transparent 60%, transparent 75%,
+        var(--coral) 75%, var(--coral) 80%,
+        transparent 80%);
+    pointer-events: none;
+    opacity: 0.6;
+    border-radius: 0 0 18px 0;
   }
   #draw-modal .modal-header { margin-bottom: 8px; flex-shrink: 0; }
   #draw-modal .toolbar { flex-shrink: 0; }
   #draw-modal .bottom-row { flex-shrink: 0; margin-top: 8px; }
-  /* 畫布吃掉剩下的空間 */
   #draw-modal #canvas-wrap {
     flex: 1 1 auto;
-    aspect-ratio: auto;       /* 取消寬高比限制 */
-    min-height: 200px;        /* 至少 200px */
-    height: 100%;             /* 撐滿剩餘空間 */
+    aspect-ratio: auto;
+    min-height: 200px;
+    height: 100%;
     width: 100%;
   }
 
@@ -1153,7 +1184,7 @@ import {
    ⚠️ Firebase Config — 從 Firebase Console 取得後填入
    ============================================================ */
 const firebaseConfig = {
-  apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
+ apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
   authDomain:        "drawfish-81c9d.firebaseapp.com",
   databaseURL:       "https://drawfish-81c9d-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:         "drawfish-81c9d",
