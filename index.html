@@ -632,6 +632,14 @@
     cursor: crosshair;
     touch-action: none;
     flex-shrink: 0;
+    transition: aspect-ratio 0.3s ease;
+  }
+  /* 頭朝上時畫布變直立 */
+  #canvas-wrap.vertical {
+    aspect-ratio: 9 / 16;
+    max-height: calc(96vh - 200px); /* 留位置給工具列和底部 */
+    margin: 0 auto;
+    width: auto;
   }
   #canvas {
     position: absolute;
@@ -2193,6 +2201,9 @@ function setHeadDirection(dir, transformCanvas = false) {
   const oldDir = headDirection;
   if (transformCanvas && oldDir !== dir && !canvasIsBlank()) {
     transformCanvasForDirection(oldDir, dir);
+  } else if (transformCanvas && oldDir !== dir) {
+    // 沒畫東西也要切畫布形狀
+    updateCanvasShape(dir);
   }
   headDirection = dir;
   headMarkers.forEach(m => m.classList.toggle('active', m.dataset.head === dir));
@@ -2200,7 +2211,6 @@ function setHeadDirection(dir, transformCanvas = false) {
   // 切換方向時自動調整支點預設位置（沒手動拖過的情況）
   if (transformCanvas) {
     if (dir === 'up') {
-      // 水母：支點預設在傘的下沿（Y=50%，分上下兩半）
       setPivotPosition(0.5, 0.5);
     } else if (dir === 'left') {
       setPivotPosition(0.7, 0.5);
@@ -2210,21 +2220,43 @@ function setHeadDirection(dir, transformCanvas = false) {
   }
 }
 
+// 切換畫布顯示形狀（不動內容）
+function updateCanvasShape(dir) {
+  if (dir === 'up') {
+    canvasWrap.classList.add('vertical');
+    // 內部 canvas 改為直向解析度（720 寬 × 1280 高）
+    if (canvas.width !== 720 || canvas.height !== 1280) {
+      resizeCanvas(720, 1280);
+    }
+  } else {
+    canvasWrap.classList.remove('vertical');
+    if (canvas.width !== 1280 || canvas.height !== 720) {
+      resizeCanvas(1280, 720);
+    }
+  }
+}
+
+// 改變 canvas 內部尺寸（會清掉內容，所以呼叫前要備份）
+function resizeCanvas(newW, newH) {
+  canvas.width = newW;
+  canvas.height = newH;
+}
+
 // 根據方向變換畫布內容
 function transformCanvasForDirection(oldDir, newDir) {
-  // left <-> right：水平翻轉
+  // left <-> right：水平翻轉（不換形狀）
   if ((oldDir === 'left' && newDir === 'right') || (oldDir === 'right' && newDir === 'left')) {
     flipCanvasHorizontal();
     return;
   }
-  // 從左/右切到上：旋轉 +90 度（順時針）
+  // 從左/右切到上：旋轉 90 度 + 切換為直向畫布
   if (newDir === 'up' && (oldDir === 'left' || oldDir === 'right')) {
-    rotateCanvas90(oldDir === 'left' ? 1 : -1);
+    rotateAndReshape(oldDir === 'left' ? 1 : -1, 'vertical');
     return;
   }
-  // 從上切到左/右：旋轉 -90 度
+  // 從上切到左/右：旋轉 -90 度 + 切換為橫向畫布
   if (oldDir === 'up' && (newDir === 'left' || newDir === 'right')) {
-    rotateCanvas90(newDir === 'left' ? -1 : 1);
+    rotateAndReshape(newDir === 'left' ? -1 : 1, 'horizontal');
     return;
   }
 }
@@ -2243,28 +2275,34 @@ function flipCanvasHorizontal() {
   ctx.restore();
 }
 
-// 旋轉畫布 90 度（dir = 1 順時針, -1 逆時針）
-// 因為畫布是 16:9 但旋轉後變成 9:16，需要等比例縮放置中
-function rotateCanvas90(dir) {
-  const cw = canvas.width;
-  const ch = canvas.height;
-  // 把當前畫布存到臨時 canvas
+// 旋轉 90 度 + 同時切換畫布形狀（無縮放！）
+// dir: 1 = 順時針 90°, -1 = 逆時針 90°
+// targetShape: 'horizontal' (16:9) 或 'vertical' (9:16)
+function rotateAndReshape(dir, targetShape) {
+  // 1. 備份當前內容
   const tmp = document.createElement('canvas');
-  tmp.width = cw;
-  tmp.height = ch;
+  tmp.width = canvas.width;
+  tmp.height = canvas.height;
   tmp.getContext('2d').drawImage(canvas, 0, 0);
 
-  ctx.clearRect(0, 0, cw, ch);
+  // 2. 改變畫布尺寸（寬高交換）
+  const newW = targetShape === 'vertical' ? 720 : 1280;
+  const newH = targetShape === 'vertical' ? 1280 : 720;
+  resizeCanvas(newW, newH);
+
+  // 3. 改變顯示形狀
+  if (targetShape === 'vertical') {
+    canvasWrap.classList.add('vertical');
+  } else {
+    canvasWrap.classList.remove('vertical');
+  }
+
+  // 4. 旋轉並繪製到新畫布（內容尺寸不變！）
   ctx.save();
-  // 移到中心
-  ctx.translate(cw / 2, ch / 2);
+  ctx.translate(newW / 2, newH / 2);
   ctx.rotate(dir * Math.PI / 2);
-  // 旋轉後寬高交換，要等比例縮放到能放進原畫布
-  // 旋轉後內容寬度 = 原 ch，要塞進 cw → 縮放
-  const scale = Math.min(cw / ch, ch / cw); // = ch/cw（因為 ch < cw）
-  ctx.scale(scale, scale);
-  // 把臨時 canvas 畫到（旋轉+縮放後的）中心
-  ctx.drawImage(tmp, -cw / 2, -ch / 2);
+  // 把臨時 canvas 從中心畫上（原寬高，所以旋轉後剛好填滿新畫布）
+  ctx.drawImage(tmp, -tmp.width / 2, -tmp.height / 2);
   ctx.restore();
 }
 
@@ -2286,11 +2324,13 @@ summonBtn.addEventListener('click', () => {
 // 開啟「新增魚」視窗
 function openDrawModalNew() {
   editingFishId = null;
+  // 預設橫向（頭朝左）
+  updateCanvasShape('left');
   clearCanvas();
   fishName.value = '';
   setFishSize('small');
   setHeadDirection('left');
-  setPivotPosition(0.8, 0.5);  // 預設支點在右側中間（適合頭朝左的魚，尾巴大約在右側）
+  setPivotPosition(0.7, 0.5);
   pivotMarker.classList.remove('dragged');
   undoStack.length = 0;
   redoStack.length = 0;
@@ -2303,13 +2343,14 @@ function openDrawModalNew() {
 // 開啟「編輯魚」視窗
 function openDrawModalEdit(fish) {
   editingFishId = fish.id;
+  // 根據魚的方向設定畫布形狀
+  updateCanvasShape(fish.headDirection || 'left');
   clearCanvas();
   fishName.value = fish.name === '無名小卒' ? '' : fish.name;
   setFishSize(fish.sizeLevel || 'small');
   setHeadDirection(fish.headDirection || 'left');
-  // 載入該魚的支點位置（沒存過就用預設）
-  setPivotPosition(fish.pivotX ?? 0.8, fish.pivotY ?? 0.5);
-  pivotMarker.classList.add('dragged'); // 編輯時不顯示提示文字
+  setPivotPosition(fish.pivotX ?? 0.7, fish.pivotY ?? 0.5);
+  pivotMarker.classList.add('dragged');
   undoStack.length = 0;
   redoStack.length = 0;
   updateUndoRedoButtons();
