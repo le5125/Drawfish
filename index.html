@@ -605,7 +605,7 @@
   }
   .name-input:focus { border-color: var(--coral); }
 
-  /* ===== Undo / Redo 按鈕（取代頭朝向） ===== */
+  /* ===== Undo / Redo 按鈕（粗體深色） ===== */
   .undo-redo {
     display: flex;
     background: #fff;
@@ -619,8 +619,8 @@
     border: none;
     padding: 10px 14px;
     font-family: var(--display);
-    font-weight: 700;
-    font-size: 18px;
+    font-weight: 900;
+    font-size: 26px;             /* 加大 */
     color: var(--ink);
     cursor: pointer;
     border-radius: 8px;
@@ -628,14 +628,44 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
+    min-width: 48px;
+    line-height: 1;
   }
   .undo-redo button:hover:not(:disabled) {
-    background: rgba(0, 40, 68, 0.06);
+    background: rgba(0, 40, 68, 0.08);
+    color: var(--coral);
   }
   .undo-redo button:disabled {
     color: #c5cdd4;
     cursor: not-allowed;
+  }
+
+  /* ===== 尺寸選擇器（大中小） ===== */
+  .size-pick {
+    display: flex;
+    background: #fff;
+    border: 1.5px solid rgba(0, 40, 68, 0.15);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .size-pick button {
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 17px;
+    color: #7a8590;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+    min-width: 42px;
+  }
+  .size-pick button:hover { background: rgba(0, 40, 68, 0.06); color: var(--ink); }
+  .size-pick button.active {
+    background: var(--ink);
+    color: #fff;
   }
 
   /* 頭朝向（縮小版，在工具列右側） */
@@ -773,6 +803,28 @@
   .rank-badge.rank-2 { background: #d0d0d0; }
   .rank-badge.rank-3 { background: #cd9168; color: #fff; }
   .rank-badge.rank-other { background: #f5ede0; color: #7a8590; font-size: 15px; }
+  .rank-badge.rank-bottom { background: #5a6772; color: #fff; font-size: 22px; }
+
+  /* 排行榜分區標題 */
+  .leaderboard-section {
+    grid-column: 1 / -1;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    padding: 12px 4px 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 2px solid rgba(0, 40, 68, 0.1);
+    margin-bottom: 4px;
+  }
+  .leaderboard-section.bottom-section {
+    margin-top: 20px;
+    color: #5a6772;
+    border-bottom-color: rgba(192, 57, 43, 0.2);
+  }
+  .leaderboard-section .section-icon { font-size: 22px; }
 
   .card-thumb-wrap {
     width: 100%;
@@ -1218,14 +1270,6 @@
         <input type="range" id="brush-size" min="2" max="40" value="6">
         <div class="size-preview"><div class="size-preview-dot" id="size-preview-dot"></div></div>
       </div>
-      <div class="toolbar-divider"></div>
-      <div class="toolbar-group">
-        <span class="toolbar-label">頭</span>
-        <div class="head-quickpick">
-          <button data-head="left" class="active">← 左</button>
-          <button data-head="right">右 →</button>
-        </div>
-      </div>
     </div>
 
     <div id="canvas-wrap">
@@ -1242,12 +1286,17 @@
       </div>
     </div>
 
-    <!-- 底部：名字 + 復原/重做 + 清除 + 送出 -->
+    <!-- 底部：名字 + 尺寸 + 復原/重做 + 清除 + 送出 -->
     <div class="bottom-row">
       <input type="text" class="name-input" id="fish-name" placeholder="幫牠取個名字（例如：小金）" maxlength="20">
+      <div class="size-pick">
+        <button data-size="small" class="active">小</button>
+        <button data-size="medium">中</button>
+        <button data-size="large">大</button>
+      </div>
       <div class="undo-redo">
-        <button id="btn-undo" title="復原上一步" disabled>↶</button>
-        <button id="btn-redo" title="重做下一步" disabled>↷</button>
+        <button id="btn-undo" title="復原上一步" disabled>⟲</button>
+        <button id="btn-redo" title="重做下一步" disabled>⟳</button>
       </div>
       <button class="btn btn-secondary" id="btn-clear">清除</button>
       <button class="btn btn-primary" id="btn-submit">讓牠游動 →</button>
@@ -1463,7 +1512,7 @@ function releaseFish(fishData) {
     }
   }
 
-  const { id, image, headDirection = 'left' } = fishData;
+  const { id, image, headDirection = 'left', sizeLevel = 'small' } = fishData;
 
   const wrap = document.createElement('div');
   wrap.className = 'fish-wrap';
@@ -1478,8 +1527,10 @@ function releaseFish(fishData) {
   img.className = 'fish-img';
   img.draggable = false;
 
-  const scale = 0.7 + Math.random() * 0.7;
-  const size = 100 * scale;
+  // 尺寸倍率：小=1（原本）、中=2、大=3
+  const sizeMultiplier = sizeLevel === 'large' ? 3 : sizeLevel === 'medium' ? 2 : 1;
+  const baseScale = 0.7 + Math.random() * 0.7;
+  const size = 100 * baseScale * sizeMultiplier;
   img.style.width = size + 'px';
   img.style.height = size + 'px';
 
@@ -1567,7 +1618,29 @@ function spawnFood(clickX, clickY) {
 
 /* ============================================================
    Firebase 監聽
+   - 第一次載入：累積前 40 條後一次釋放（避免閃爍）
+   - 之後新增的：立即釋放（其他人剛畫的）
    ============================================================ */
+let initialFishes = [];
+let initialDone = false;
+let initTimer = null;
+
+function scheduleInitRelease() {
+  if (initialDone) return;
+  clearTimeout(initTimer);
+  initTimer = setTimeout(() => {
+    if (initialDone) return;
+    initialDone = true;
+    // 按時間倒序，取最新 40 條
+    const sorted = initialFishes.sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_FISHES_IN_TANK);
+    // 反轉回來（最新的最後加入，最舊的最先擠掉）
+    sorted.reverse().forEach((f, i) => {
+      setTimeout(() => releaseFish(f), i * 80);
+    });
+    initialFishes = null;
+  }, 800); // 800ms 都沒新資料 → 視為初次載入完成
+}
+
 if (isConfigured) {
   onChildAdded(fishesRef, (snap) => {
     const data = snap.val();
@@ -1578,15 +1651,29 @@ if (isConfigured) {
       name: data.name || '無名小卒',
       image: data.image,
       headDirection: data.headDirection || 'left',
+      sizeLevel: data.sizeLevel || 'small',
       ownerId: data.ownerId || 'anonymous',
       likes: data.likes || 0,
       dislikes: data.dislikes || 0,
       createdAt: data.createdAt || 0,
     };
-    if (data.createdAt && (Date.now() - data.createdAt) < 60000) {
+
+    if (!initialDone) {
+      initialFishes.push(fishDB[id]);
+      scheduleInitRelease();
+    } else {
       releaseFish(fishDB[id]);
     }
   });
+
+  // 保底：如果一秒內什麼都沒收到，也視為完成
+  setTimeout(() => {
+    if (!initialDone) {
+      initialDone = true;
+      initialFishes = null;
+    }
+  }, 3000);
+
   onChildChanged(fishesRef, (snap) => {
     const id = snap.key;
     const data = snap.val();
@@ -1630,7 +1717,23 @@ let startX = 0, startY = 0;
 let currentColor = '#002844';
 let currentTool = 'pen';
 let headDirection = 'left';
+let fishSize = 'small';      // 'small' | 'medium' | 'large'
+let editingFishId = null;    // 目前是不是在編輯某條魚（null = 新增）
 let snapshot = null;
+
+// 尺寸選擇
+const sizePickBtns = document.querySelectorAll('.size-pick button');
+sizePickBtns.forEach(b => {
+  b.addEventListener('click', () => {
+    sizePickBtns.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    fishSize = b.dataset.size;
+  });
+});
+function setFishSize(size) {
+  fishSize = size;
+  sizePickBtns.forEach(b => b.classList.toggle('active', b.dataset.size === size));
+}
 
 /* ============================================================
    復原 / 重做（Undo / Redo）
@@ -1750,13 +1853,59 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 summonBtn.addEventListener('click', () => {
+  openDrawModalNew();
+});
+
+// 開啟「新增魚」視窗
+function openDrawModalNew() {
+  editingFishId = null;
   clearCanvas();
   fishName.value = '';
+  setFishSize('small');
+  setHeadDirection('left');
   undoStack.length = 0;
   redoStack.length = 0;
   updateUndoRedoButtons();
+  // 改標題
+  document.querySelector('#draw-modal .modal-title').innerHTML = '畫一隻 <em>魚</em>';
+  document.getElementById('btn-submit').textContent = '讓牠游動 →';
   openModal('draw-modal');
-});
+}
+
+// 開啟「編輯魚」視窗
+function openDrawModalEdit(fish) {
+  editingFishId = fish.id;
+  clearCanvas();
+  fishName.value = fish.name === '無名小卒' ? '' : fish.name;
+  setFishSize(fish.sizeLevel || 'small');
+  setHeadDirection(fish.headDirection || 'left');
+  undoStack.length = 0;
+  redoStack.length = 0;
+  updateUndoRedoButtons();
+  // 改標題
+  document.querySelector('#draw-modal .modal-title').innerHTML = '編輯 <em>' + escapeHTML(fish.name) + '</em>';
+  document.getElementById('btn-submit').textContent = '儲存修改 →';
+  openModal('draw-modal');
+
+  // 把原圖載到 canvas
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    // 等 modal 渲染完，畫布尺寸才正確
+    setTimeout(() => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 等比例繪製到 canvas 中央
+      const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.8;
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const x = (canvas.width - w) / 2;
+      const y = (canvas.height - h) / 2;
+      ctx.drawImage(img, x, y, w, h);
+      canvasWrap.classList.add('has-drawing');
+    }, 100);
+  };
+  img.src = fish.image;
+}
 document.querySelectorAll('[data-close]').forEach(btn => {
   btn.addEventListener('click', () => closeModal(btn.dataset.close));
 });
@@ -1932,9 +2081,55 @@ submitBtn.addEventListener('click', async () => {
   const trimmed = getTrimmedCanvas(canvas);
   const dataUrl = trimmed.toDataURL('image/png');
 
+  // ===== 編輯模式：更新現有的魚 =====
+  if (editingFishId) {
+    const oldFish = fishDB[editingFishId];
+    if (!oldFish) {
+      showToast('找不到原魚資料 😢');
+      return;
+    }
+    if (!isConfigured) {
+      fishDB[editingFishId] = { ...oldFish, name, image: dataUrl, headDirection, sizeLevel: fishSize };
+      // 把畫面上正在游的也換掉
+      aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${editingFishId}"]`).forEach(el => {
+        swimmingFishes.delete(el);
+        el.remove();
+      });
+      releaseFish(fishDB[editingFishId]);
+      closeModal('draw-modal');
+      showToast(`「${name}」已更新`);
+      editingFishId = null;
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = '更新中...';
+    try {
+      // 用 runTransaction 確保不會洗掉 likes/dislikes
+      await runTransaction(ref(db, 'fishes/' + editingFishId), (data) => {
+        if (!data) return data;
+        data.name = name;
+        data.image = dataUrl;
+        data.headDirection = headDirection;
+        data.sizeLevel = fishSize;
+        return data;
+      });
+      closeModal('draw-modal');
+      showToast(`「${name}」已更新 ✏️`);
+      editingFishId = null;
+    } catch (err) {
+      console.error(err);
+      showToast('更新失敗 😢');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '儲存修改 →';
+    }
+    return;
+  }
+
+  // ===== 新增模式：新建一條魚 =====
   if (!isConfigured) {
     const localId = 'local_' + Date.now() + Math.random().toString(36).slice(2, 6);
-    const data = { id: localId, name, image: dataUrl, headDirection, ownerId: USER_ID, likes: 0, dislikes: 0, createdAt: Date.now() };
+    const data = { id: localId, name, image: dataUrl, headDirection, sizeLevel: fishSize, ownerId: USER_ID, likes: 0, dislikes: 0, createdAt: Date.now() };
     fishDB[localId] = data;
     releaseFish(data);
     closeModal('draw-modal');
@@ -1947,6 +2142,7 @@ submitBtn.addEventListener('click', async () => {
   try {
     await push(fishesRef, {
       name, image: dataUrl, headDirection,
+      sizeLevel: fishSize,
       ownerId: USER_ID,
       likes: 0, dislikes: 0,
       createdAt: Date.now()
@@ -2040,90 +2236,145 @@ function escapeHTML(s) {
 
 function renderList() {
   let arr = Object.values(fishDB);
+  let topArr = null, bottomArr = null;
+
   if (currentListMode === 'leaderboard') {
+    // 按分數排序
     arr.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
-    arr = arr.slice(0, 50);
+    // 取前 20 + 倒數 20
+    if (arr.length <= 40) {
+      topArr = arr;
+      bottomArr = [];
+    } else {
+      topArr = arr.slice(0, 20);
+      bottomArr = arr.slice(-20).reverse();  // 倒數 20 從最差開始
+    }
   } else if (currentListMode === 'mine') {
     arr = arr.filter(f => f.ownerId === USER_ID).sort((a, b) => b.createdAt - a.createdAt);
   } else if (currentListMode === 'favorites') {
     const favs = getFavorites();
     arr = arr.filter(f => favs.includes(f.id));
   }
+
+  // 渲染目標：排行榜用 top/bottom 兩段，其他用 arr
+  if (currentListMode === 'leaderboard') {
+    if (topArr.length === 0) {
+      fishList.innerHTML = `<div class="empty-state"><div class="em-icon">🏆</div><div>還沒有魚兒上榜，快去畫一隻！</div></div>`;
+      return;
+    }
+    fishList.innerHTML = '';
+    // 前 20 名標題
+    const topHeader = document.createElement('div');
+    topHeader.className = 'leaderboard-section';
+    topHeader.innerHTML = `<span class="section-icon">🏆</span> 排行榜前 ${topArr.length} 名`;
+    fishList.appendChild(topHeader);
+    topArr.forEach((fish, idx) => fishList.appendChild(makeCard(fish, idx, 'top')));
+
+    // 倒數 20 名
+    if (bottomArr.length > 0) {
+      const bottomHeader = document.createElement('div');
+      bottomHeader.className = 'leaderboard-section bottom-section';
+      bottomHeader.innerHTML = `<span class="section-icon">💩</span> 倒數 ${bottomArr.length} 名（評分最低）`;
+      fishList.appendChild(bottomHeader);
+      bottomArr.forEach((fish, idx) => fishList.appendChild(makeCard(fish, idx, 'bottom')));
+    }
+    return;
+  }
+
+  // 我的魚缸 / 我的最愛
   if (arr.length === 0) {
     const emptyMsg = {
-      leaderboard: ['🏆', '還沒有魚兒上榜，快去畫一隻！'],
-      mine:        ['🐟', '你還沒畫過魚，按下方紅色按鈕開始！'],
-      favorites:   ['⭐', '你還沒收藏任何魚，點水族箱裡的魚加入吧！'],
+      mine:      ['🐟', '你還沒畫過魚，按下方紅色按鈕開始！'],
+      favorites: ['⭐', '你還沒收藏任何魚，點水族箱裡的魚加入吧！'],
     }[currentListMode];
     fishList.innerHTML = `<div class="empty-state"><div class="em-icon">${emptyMsg[0]}</div><div>${emptyMsg[1]}</div></div>`;
     return;
   }
   fishList.innerHTML = '';
-  arr.forEach((fish, idx) => {
-    const card = document.createElement('div');
-    card.className = 'fish-card';
-    const isMine = fish.ownerId === USER_ID;
-    const score = fish.likes - fish.dislikes;
-    const fav = isFavorite(fish.id);
+  arr.forEach((fish, idx) => fishList.appendChild(makeCard(fish, idx, currentListMode)));
+}
 
-    let rankHTML = '';
-    if (currentListMode === 'leaderboard') {
-      let rankCls = 'rank-other';
-      let rankText = (idx + 1);
-      if (idx === 0)      { rankCls = 'rank-1'; rankText = '🥇'; }
-      else if (idx === 1) { rankCls = 'rank-2'; rankText = '🥈'; }
-      else if (idx === 2) { rankCls = 'rank-3'; rankText = '🥉'; }
-      rankHTML = `<div class="rank-badge ${rankCls}">${rankText}</div>`;
+function makeCard(fish, idx, section) {
+  const card = document.createElement('div');
+  card.className = 'fish-card';
+  const isMine = fish.ownerId === USER_ID;
+  const score = fish.likes - fish.dislikes;
+  const fav = isFavorite(fish.id);
+
+  let rankHTML = '';
+  if (section === 'top') {
+    let rankCls = 'rank-other';
+    let rankText = (idx + 1);
+    if (idx === 0)      { rankCls = 'rank-1'; rankText = '🥇'; }
+    else if (idx === 1) { rankCls = 'rank-2'; rankText = '🥈'; }
+    else if (idx === 2) { rankCls = 'rank-3'; rankText = '🥉'; }
+    rankHTML = `<div class="rank-badge ${rankCls}">${rankText}</div>`;
+  } else if (section === 'bottom') {
+    rankHTML = `<div class="rank-badge rank-bottom">💩</div>`;
+  }
+
+  const d = new Date(fish.createdAt || Date.now());
+  const dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+  const scoreCls = score > 0 ? 'positive' : score < 0 ? 'negative' : '';
+  const scoreStr = `評分：${score >= 0 ? '+' : ''}${score}`;
+
+  card.innerHTML = `
+    ${rankHTML}
+    <div class="fc-actions">
+      ${currentListMode === 'mine' && isMine ? '<button class="icon-btn edit-btn" title="編輯">✏️</button>' : ''}
+      <button class="icon-btn release-btn" title="放進水族箱">🌊</button>
+      <button class="icon-btn fav ${fav ? 'active' : ''}" title="${fav ? '取消收藏' : '加到我的最愛'}">★</button>
+      ${isMine ? '<button class="icon-btn danger del-btn" title="刪除">🗑</button>' : ''}
+    </div>
+    <div class="card-thumb-wrap">
+      <img class="card-thumb" src="${fish.image}" alt="">
+    </div>
+    <div class="fc-name">${isMine ? '<span class="me-mark"></span>' : ''}${escapeHTML(fish.name)}</div>
+    <div class="fc-date">${dateStr}</div>
+    <div class="fc-score ${scoreCls}">${scoreStr}</div>
+    <div class="fc-votes">
+      <span>👍 ${fish.likes}</span>
+      <span>👎 ${fish.dislikes}</span>
+    </div>
+  `;
+
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.icon-btn')) return;
+    if (currentListMode === 'mine' && isMine) {
+      closeModal('list-modal');
+      openDrawModalEdit(fish);
+    } else {
+      releaseFish(fish);
+      showToast(`「${fish.name}」游進魚缸了 🐟`);
     }
-
-    const d = new Date(fish.createdAt || Date.now());
-    const dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-    const scoreCls = score > 0 ? 'positive' : score < 0 ? 'negative' : '';
-    const scoreStr = `評分：${score >= 0 ? '+' : ''}${score}`;
-
-    card.innerHTML = `
-      ${rankHTML}
-      <div class="fc-actions">
-        <button class="icon-btn release-btn" title="放進水族箱">🌊</button>
-        <button class="icon-btn fav ${fav ? 'active' : ''}" title="${fav ? '取消收藏' : '加到我的最愛'}">★</button>
-        ${isMine ? '<button class="icon-btn danger del-btn" title="刪除">🗑</button>' : ''}
-      </div>
-      <div class="card-thumb-wrap">
-        <img class="card-thumb" src="${fish.image}" alt="">
-      </div>
-      <div class="fc-name">${isMine ? '<span class="me-mark"></span>' : ''}${escapeHTML(fish.name)}</div>
-      <div class="fc-date">${dateStr}</div>
-      <div class="fc-score ${scoreCls}">${scoreStr}</div>
-      <div class="fc-votes">
-        <span>👍 ${fish.likes}</span>
-        <span>👎 ${fish.dislikes}</span>
-      </div>
-    `;
-
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('.icon-btn')) return;
-      releaseFish(fish);
-      showToast(`「${fish.name}」游進魚缸了 🐟`);
-    });
-    card.querySelector('.release-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      releaseFish(fish);
-      showToast(`「${fish.name}」游進魚缸了 🐟`);
-    });
-    card.querySelector('.fav').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const nowFav = toggleFavorite(fish.id);
-      e.currentTarget.classList.toggle('active', nowFav);
-      e.currentTarget.title = nowFav ? '取消收藏' : '加到我的最愛';
-      if (currentListMode === 'favorites') renderList();
-    });
-    const delBtn = card.querySelector('.del-btn');
-    if (delBtn) delBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteFish(fish.id, fish.name);
-    });
-    fishList.appendChild(card);
   });
+
+  const editBtn = card.querySelector('.edit-btn');
+  if (editBtn) editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeModal('list-modal');
+    openDrawModalEdit(fish);
+  });
+
+  card.querySelector('.release-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    releaseFish(fish);
+    showToast(`「${fish.name}」游進魚缸了 🐟`);
+  });
+  card.querySelector('.fav').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const nowFav = toggleFavorite(fish.id);
+    e.currentTarget.classList.toggle('active', nowFav);
+    e.currentTarget.title = nowFav ? '取消收藏' : '加到我的最愛';
+    if (currentListMode === 'favorites') renderList();
+  });
+  const delBtn = card.querySelector('.del-btn');
+  if (delBtn) delBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteFish(fish.id, fish.name);
+  });
+
+  return card;
 }
 
 async function deleteFish(id, name) {
