@@ -214,13 +214,15 @@
     100% { transform: translateY(20vh); }
   }
 
-  /* 水母模式：垂直來回大幅度（從畫面底部漂到頂部再下來） */
+  /* 水母模式：垂直來回（不超出上下邊界）
+     注意：水母圖片約佔 100~300px 高度，top=0 為水面附近，
+     底部留 25vh buffer 避免插進海床 */
   .fish-wrap.swim-up .fish-vfloat {
     animation: jellyVertical ease-in-out infinite alternate;
   }
   @keyframes jellyVertical {
-    0%   { transform: translateY(60vh); }
-    100% { transform: translateY(-25vh); }
+    0%   { transform: translateY(60vh); }   /* 下方（不撞海床） */
+    100% { transform: translateY(8vh); }    /* 上方（不撞 HUD） */
   }
 
   /* 短週期 bob */
@@ -1061,6 +1063,48 @@
     font-weight: 500;
   }
   .fc-votes span { display: flex; align-items: center; gap: 5px; }
+
+  /* 卡片內的按讚按鈕 */
+  .fc-vote-btns {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 40, 68, 0.06);
+  }
+  .vote-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border: 1.5px solid rgba(0, 40, 68, 0.1);
+    background: #fff;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.15s;
+  }
+  .vote-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 40, 68, 0.1);
+  }
+  .vote-btn.like-btn:hover { background: #d6f5e0; border-color: #2a9d4a; color: #2a9d4a; }
+  .vote-btn.dislike-btn:hover { background: #fde0dd; border-color: #c0392b; color: #c0392b; }
+  .vote-btn.like-btn.active { background: #2a9d4a; border-color: #2a9d4a; color: #fff; }
+  .vote-btn.dislike-btn.active { background: #c0392b; border-color: #c0392b; color: #fff; }
+  .vote-btn .vote-count { font-family: var(--mono); font-size: 14px; }
+
+  /* 卡片整體不再有 cursor: pointer（除非縮圖區） */
+  .fish-card { cursor: default !important; }
+  .fish-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 40, 68, 0.15);
+  }
 
   .fc-actions {
     position: absolute;
@@ -2732,7 +2776,7 @@ function makeCard(fish, idx, section) {
     ${rankHTML}
     <div class="fc-actions">
       ${currentListMode === 'mine' && isMine ? '<button class="icon-btn edit-btn" title="編輯">✏️</button>' : ''}
-      <button class="icon-btn release-btn" title="放進水族箱">🌊</button>
+      <button class="icon-btn release-btn" title="放進魚缸">🌊</button>
       <button class="icon-btn fav ${fav ? 'active' : ''}" title="${fav ? '取消收藏' : '加到我的最愛'}">★</button>
       ${isMine ? '<button class="icon-btn danger del-btn" title="刪除">🗑</button>' : ''}
     </div>
@@ -2742,22 +2786,28 @@ function makeCard(fish, idx, section) {
     <div class="fc-name">${isMine ? '<span class="me-mark"></span>' : ''}${escapeHTML(fish.name)}</div>
     <div class="fc-date">${dateStr}</div>
     <div class="fc-score ${scoreCls}">${scoreStr}</div>
-    <div class="fc-votes">
-      <span>👍 ${fish.likes}</span>
-      <span>👎 ${fish.dislikes}</span>
+    <div class="fc-vote-btns">
+      <button class="vote-btn like-btn ${(getVotes()[fish.id] === 'like') ? 'active' : ''}" title="按讚">
+        👍 <span class="vote-count">${fish.likes}</span>
+      </button>
+      <button class="vote-btn dislike-btn ${(getVotes()[fish.id] === 'dislike') ? 'active' : ''}" title="倒讚">
+        👎 <span class="vote-count">${fish.dislikes}</span>
+      </button>
     </div>
   `;
 
-  card.addEventListener('click', (e) => {
-    if (e.target.closest('.icon-btn')) return;
-    if (currentListMode === 'mine' && isMine) {
+  // 卡片本身不再有「點 = 放進魚缸」的行為
+  // 編輯模式的魚卡：點圖片區域才能進入編輯
+  if (currentListMode === 'mine' && isMine) {
+    const thumbWrap = card.querySelector('.card-thumb-wrap');
+    thumbWrap.style.cursor = 'pointer';
+    thumbWrap.title = '點圖片進入編輯';
+    thumbWrap.addEventListener('click', (e) => {
+      e.stopPropagation();
       closeModal('list-modal');
       openDrawModalEdit(fish);
-    } else {
-      releaseFish(fish);
-      showToast(`「${fish.name}」游進魚缸了 🐟`);
-    }
-  });
+    });
+  }
 
   const editBtn = card.querySelector('.edit-btn');
   if (editBtn) editBtn.addEventListener('click', (e) => {
@@ -2782,6 +2832,18 @@ function makeCard(fish, idx, section) {
   if (delBtn) delBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     deleteFish(fish.id, fish.name);
+  });
+
+  // 按讚 / 倒讚
+  card.querySelector('.like-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    voteFish(fish.id, 'like', getVotes()[fish.id]);
+    setTimeout(renderList, 200); // 200ms 後刷新列表，等 Firebase 回應
+  });
+  card.querySelector('.dislike-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    voteFish(fish.id, 'dislike', getVotes()[fish.id]);
+    setTimeout(renderList, 200);
   });
 
   return card;
@@ -2937,7 +2999,7 @@ async function voteFish(id, type, currentVote) {
     fishDB[id].likes    = Math.max(0, fishDB[id].likes + likeDelta);
     fishDB[id].dislikes = Math.max(0, fishDB[id].dislikes + dislikeDelta);
     setVote(id, newVote);
-    refreshCard();
+    if (currentCardFishId === id) refreshCard();
     return;
   }
   try {
@@ -2948,7 +3010,7 @@ async function voteFish(id, type, currentVote) {
       return data;
     });
     setVote(id, newVote);
-    refreshCard();
+    if (currentCardFishId === id) refreshCard();
   } catch (err) {
     console.error(err);
     showToast('投票失敗 😢');
