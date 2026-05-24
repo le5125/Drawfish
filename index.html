@@ -1545,6 +1545,11 @@
     margin-top: 16px;
   }
 
+  /* 對話框類 modal（切換身份、改名、刪除確認）要蓋在普通 modal 上 */
+  #switch-id-modal, #rename-modal, #confirm-dialog {
+    z-index: 150;
+  }
+
   /* 我的清單頂部的身份條 */
   .my-id-bar {
     background: linear-gradient(135deg, rgba(255,200,87,0.15), rgba(255,90,60,0.08));
