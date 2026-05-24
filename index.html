@@ -1677,11 +1677,41 @@ if (isConfigured) {
   onChildChanged(fishesRef, (snap) => {
     const id = snap.key;
     const data = snap.val();
-    if (fishDB[id] && data) {
-      fishDB[id].likes = data.likes || 0;
-      fishDB[id].dislikes = data.dislikes || 0;
-      if (currentCardFishId === id) refreshCard();
+    if (!fishDB[id] || !data) return;
+
+    // 判斷哪些欄位變了
+    const oldFish = fishDB[id];
+    const nameChanged  = oldFish.name !== data.name;
+    const imageChanged = oldFish.image !== data.image;
+    const headChanged  = oldFish.headDirection !== data.headDirection;
+    const sizeChanged  = (oldFish.sizeLevel || 'small') !== (data.sizeLevel || 'small');
+
+    // 更新 cache
+    fishDB[id] = {
+      ...oldFish,
+      name: data.name || '無名小卒',
+      image: data.image,
+      headDirection: data.headDirection || 'left',
+      sizeLevel: data.sizeLevel || 'small',
+      likes: data.likes || 0,
+      dislikes: data.dislikes || 0,
+    };
+
+    // 如果是「外觀」變了（圖、頭、大小）→ 把畫面上正在游的魚換掉
+    if (imageChanged || headChanged || sizeChanged) {
+      const swimmingEls = aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`);
+      swimmingEls.forEach(el => {
+        swimmingFishes.delete(el);
+        el.remove();
+      });
+      // 如果有正在游（有畫面上）→ 重新放新版的
+      if (swimmingEls.length > 0) {
+        releaseFish(fishDB[id]);
+      }
     }
+
+    // 浮卡開著 → 即時刷新
+    if (currentCardFishId === id) refreshCard();
   });
   onChildRemoved(fishesRef, (snap) => {
     const id = snap.key;
@@ -1840,14 +1870,47 @@ toolBtns.forEach(b => {
 });
 
 const headMarkers = document.querySelectorAll('.head-marker');
-const headQuickBtns = document.querySelectorAll('.head-quickpick button');
-function setHeadDirection(dir) {
+function setHeadDirection(dir, flipCanvas = false) {
+  // 如果方向真的改變，且需要翻轉畫布內容 → 水平鏡像翻轉
+  if (flipCanvas && headDirection !== dir && !canvasIsBlank()) {
+    flipCanvasHorizontal();
+    // 翻轉也算一次歷史，方便復原
+    pushHistoryAfterFlip();
+  }
   headDirection = dir;
   headMarkers.forEach(m => m.classList.toggle('active', m.dataset.head === dir));
-  headQuickBtns.forEach(b => b.classList.toggle('active', b.dataset.head === dir));
 }
-headMarkers.forEach(m => m.addEventListener('click', () => setHeadDirection(m.dataset.head)));
-headQuickBtns.forEach(b => b.addEventListener('click', () => setHeadDirection(b.dataset.head)));
+// 把現在的畫布內容水平翻轉
+function flipCanvasHorizontal() {
+  // 先存當前畫布
+  const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  // 用臨時 canvas 來翻
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width;
+  tmp.height = canvas.height;
+  tmp.getContext('2d').putImageData(current, 0, 0);
+  // 清空原畫布，鏡像繪製回去
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
+}
+// 翻轉後把翻轉前的狀態存入歷史（讓 ⟲ 能還原）
+function pushHistoryAfterFlip() {
+  // 因為 flipCanvasHorizontal 是直接改畫布，所以這時的 snapshot 已經是翻轉後的
+  // 我們在翻之前要先存一份，但這函式呼叫時已經晚了
+  // 簡單做法：每次 flip 之前在外面先 pushHistory()
+}
+// 點畫布左右兩側的「頭」標記 → 切換 + 翻轉畫面
+headMarkers.forEach(m => m.addEventListener('click', () => {
+  const newDir = m.dataset.head;
+  if (newDir === headDirection) return;
+  // 先存歷史（這樣⟲可以還原）
+  if (!canvasIsBlank()) pushHistory();
+  setHeadDirection(newDir, true);
+}));
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
