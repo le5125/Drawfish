@@ -195,13 +195,32 @@
     100%   { transform: translateX(0) scaleX(-1); }
   }
 
-  /* 垂直慢慢浮動 */
+  /* 水母模式：垂直來回 */
+  .fish-wrap.swim-up {
+    /* 外層只負責 X 軸的水平飄移 */
+    animation: jellyDriftX linear infinite alternate;
+  }
+  @keyframes jellyDriftX {
+    0%   { transform: translateX(10vw); }
+    100% { transform: translateX(75vw); }
+  }
+
+  /* 垂直慢慢浮動（魚） */
   .fish-vfloat {
     animation: vfloat ease-in-out infinite alternate;
   }
   @keyframes vfloat {
     0%   { transform: translateY(-30vh); }
     100% { transform: translateY(20vh); }
+  }
+
+  /* 水母模式：垂直來回大幅度（從畫面底部漂到頂部再下來） */
+  .fish-wrap.swim-up .fish-vfloat {
+    animation: jellyVertical ease-in-out infinite alternate;
+  }
+  @keyframes jellyVertical {
+    0%   { transform: translateY(60vh); }
+    100% { transform: translateY(-25vh); }
   }
 
   /* 短週期 bob */
@@ -259,6 +278,27 @@
   @keyframes tailSwish {
     0%   { transform: rotate(-10deg); }
     100% { transform: rotate(10deg); }
+  }
+
+  /* ===== 水母模式：上下切（上=傘、下=觸手） ===== */
+  /* pivot-x 在水母模式變成「水平切割線」（其實是 pivot-y 的角色） */
+  /* 我們用 pivot-y 變數來切（保持邏輯一致） */
+  .fish-wrap.swim-up .fish-body {
+    /* 上半部（傘）固定不動 */
+    -webkit-clip-path: inset(0 0 calc(100% - var(--pivot-y, 50%) - 2px) 0);
+    clip-path: inset(0 0 calc(100% - var(--pivot-y, 50%) - 2px) 0);
+  }
+  .fish-wrap.swim-up .fish-tail {
+    /* 下半部（觸手）—— 用脈動效果（縮放）取代旋轉 */
+    -webkit-clip-path: inset(calc(var(--pivot-y, 50%) - 2px) 0 0 0);
+    clip-path: inset(calc(var(--pivot-y, 50%) - 2px) 0 0 0);
+    transform-origin: 50% var(--pivot-y, 50%);
+    animation: jellyPulse ease-in-out infinite alternate;
+  }
+  @keyframes jellyPulse {
+    0%   { transform: scaleY(1) scaleX(1); }
+    50%  { transform: scaleY(1.15) scaleX(0.9); }
+    100% { transform: scaleY(0.9) scaleX(1.1); }
   }
 
   /* ===== HUD ===== */
@@ -642,6 +682,18 @@
   }
   .head-left  { left: 10px; }
   .head-right { right: 10px; }
+  .head-up {
+    /* 頭朝上：放在畫布頂部中央 */
+    top: 10px !important;
+    left: 50%;
+    transform: translateX(-50%) !important;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 12px;
+  }
+  .head-up.active {
+    transform: translateX(-50%) !important;
+  }
   .head-arrow { font-size: 14px; }
   .head-label { font-family: var(--display); font-weight: 700; font-size: 15px; }
 
@@ -1406,6 +1458,9 @@
       <div class="head-marker head-right" data-head="right">
         <span class="head-label">頭</span><span class="head-arrow">▶</span>
       </div>
+      <div class="head-marker head-up" data-head="up">
+        <span class="head-arrow">▲</span><span class="head-label">頭</span>
+      </div>
       <!-- 可拖曳的擺動支點（標尾巴） -->
       <div id="pivot-marker" title="拖動我到尾巴根部，魚就會以這點為中心擺動">
         <div class="pivot-dot"></div>
@@ -1644,12 +1699,21 @@ function releaseFish(fishData) {
   const wrap = document.createElement('div');
   wrap.className = 'fish-wrap';
   wrap.dataset.fishId = id;
-  wrap.classList.add(headDirection === 'left' ? 'swim-left' : 'swim-right');
+  // 依頭朝向決定動畫類別
+  if (headDirection === 'up') {
+    wrap.classList.add('swim-up');
+  } else if (headDirection === 'right') {
+    wrap.classList.add('swim-right');
+  } else {
+    wrap.classList.add('swim-left');
+  }
 
   // 第二層：垂直慢慢浮動
   const vfloatLayer = document.createElement('div');
   vfloatLayer.className = 'fish-vfloat';
-  vfloatLayer.style.animationDuration = (15 + Math.random() * 10) + 's';
+  // 水母：20~35 秒一上一下；魚：15~25 秒
+  const vDur = headDirection === 'up' ? 20 + Math.random() * 15 : 15 + Math.random() * 10;
+  vfloatLayer.style.animationDuration = vDur + 's';
   vfloatLayer.style.animationDelay = (-Math.random() * 20) + 's';
 
   // 第三層：小幅 bob
@@ -1691,8 +1755,14 @@ function releaseFish(fishData) {
   tailImg.draggable = false;
   tailImg.style.width = size + 'px';
   tailImg.style.height = size + 'px';
-  // 每條魚尾巴擺動週期隨機
-  tailImg.style.animationDuration = (0.5 + Math.random() * 0.5) + 's';
+  // 尾巴/觸手擺動週期
+  if (headDirection === 'up') {
+    // 水母脈動：1.5~3 秒一次（慢，模擬呼吸）
+    tailImg.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+  } else {
+    // 魚尾巴：0.5~1 秒一次（快）
+    tailImg.style.animationDuration = (0.5 + Math.random() * 0.5) + 's';
+  }
 
   bodyWrap.appendChild(bodyImg);
   bodyWrap.appendChild(tailImg);
@@ -1700,11 +1770,18 @@ function releaseFish(fishData) {
   vfloatLayer.appendChild(bobLayer);
   wrap.appendChild(vfloatLayer);
 
-  wrap.style.top = '35vh';
-
-  // 一個來回（左→右→左）的時間：12~20 秒，無限循環
-  const roundDuration = 12 + Math.random() * 8;
-  wrap.style.animationDuration = roundDuration + 's';
+  // 動畫週期
+  if (headDirection === 'up') {
+    // 水母水平飄移：30~50 秒走一趟（很慢）
+    wrap.style.animationDuration = (30 + Math.random() * 20) + 's';
+    wrap.style.animationDelay = (-Math.random() * 30) + 's';
+    // 起始 top 不重要，jellyVertical 動畫會接管
+    wrap.style.top = '0';
+  } else {
+    // 魚水平來回：12~20 秒
+    wrap.style.animationDuration = (12 + Math.random() * 8) + 's';
+    wrap.style.top = '35vh';
+  }
 
   swimmingFishes.add(wrap);
 
@@ -2068,26 +2145,52 @@ toolBtns.forEach(b => {
 });
 
 const headMarkers = document.querySelectorAll('.head-marker');
-function setHeadDirection(dir, flipCanvas = false) {
-  // 如果方向真的改變，且需要翻轉畫布內容 → 水平鏡像翻轉
-  if (flipCanvas && headDirection !== dir && !canvasIsBlank()) {
-    flipCanvasHorizontal();
-    // 翻轉也算一次歷史，方便復原
-    pushHistoryAfterFlip();
+function setHeadDirection(dir, transformCanvas = false) {
+  const oldDir = headDirection;
+  if (transformCanvas && oldDir !== dir && !canvasIsBlank()) {
+    transformCanvasForDirection(oldDir, dir);
   }
   headDirection = dir;
   headMarkers.forEach(m => m.classList.toggle('active', m.dataset.head === dir));
+
+  // 切換方向時自動調整支點預設位置（沒手動拖過的情況）
+  if (transformCanvas) {
+    if (dir === 'up') {
+      // 水母：支點預設在傘的下沿（Y=50%，分上下兩半）
+      setPivotPosition(0.5, 0.5);
+    } else if (dir === 'left') {
+      setPivotPosition(0.7, 0.5);
+    } else if (dir === 'right') {
+      setPivotPosition(0.3, 0.5);
+    }
+  }
 }
-// 把現在的畫布內容水平翻轉
+
+// 根據方向變換畫布內容
+function transformCanvasForDirection(oldDir, newDir) {
+  // left <-> right：水平翻轉
+  if ((oldDir === 'left' && newDir === 'right') || (oldDir === 'right' && newDir === 'left')) {
+    flipCanvasHorizontal();
+    return;
+  }
+  // 從左/右切到上：旋轉 +90 度（順時針）
+  if (newDir === 'up' && (oldDir === 'left' || oldDir === 'right')) {
+    rotateCanvas90(oldDir === 'left' ? 1 : -1);
+    return;
+  }
+  // 從上切到左/右：旋轉 -90 度
+  if (oldDir === 'up' && (newDir === 'left' || newDir === 'right')) {
+    rotateCanvas90(newDir === 'left' ? -1 : 1);
+    return;
+  }
+}
+
 function flipCanvasHorizontal() {
-  // 先存當前畫布
   const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  // 用臨時 canvas 來翻
   const tmp = document.createElement('canvas');
   tmp.width = canvas.width;
   tmp.height = canvas.height;
   tmp.getContext('2d').putImageData(current, 0, 0);
-  // 清空原畫布，鏡像繪製回去
   ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.translate(canvas.width, 0);
@@ -2095,17 +2198,36 @@ function flipCanvasHorizontal() {
   ctx.drawImage(tmp, 0, 0);
   ctx.restore();
 }
-// 翻轉後把翻轉前的狀態存入歷史（讓 ⟲ 能還原）
-function pushHistoryAfterFlip() {
-  // 因為 flipCanvasHorizontal 是直接改畫布，所以這時的 snapshot 已經是翻轉後的
-  // 我們在翻之前要先存一份，但這函式呼叫時已經晚了
-  // 簡單做法：每次 flip 之前在外面先 pushHistory()
+
+// 旋轉畫布 90 度（dir = 1 順時針, -1 逆時針）
+// 因為畫布是 16:9 但旋轉後變成 9:16，需要等比例縮放置中
+function rotateCanvas90(dir) {
+  const cw = canvas.width;
+  const ch = canvas.height;
+  // 把當前畫布存到臨時 canvas
+  const tmp = document.createElement('canvas');
+  tmp.width = cw;
+  tmp.height = ch;
+  tmp.getContext('2d').drawImage(canvas, 0, 0);
+
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.save();
+  // 移到中心
+  ctx.translate(cw / 2, ch / 2);
+  ctx.rotate(dir * Math.PI / 2);
+  // 旋轉後寬高交換，要等比例縮放到能放進原畫布
+  // 旋轉後內容寬度 = 原 ch，要塞進 cw → 縮放
+  const scale = Math.min(cw / ch, ch / cw); // = ch/cw（因為 ch < cw）
+  ctx.scale(scale, scale);
+  // 把臨時 canvas 畫到（旋轉+縮放後的）中心
+  ctx.drawImage(tmp, -cw / 2, -ch / 2);
+  ctx.restore();
 }
-// 點畫布左右兩側的「頭」標記 → 切換 + 翻轉畫面
+
+// 點畫布的「頭」標記
 headMarkers.forEach(m => m.addEventListener('click', () => {
   const newDir = m.dataset.head;
   if (newDir === headDirection) return;
-  // 先存歷史（這樣⟲可以還原）
   if (!canvasIsBlank()) pushHistory();
   setHeadDirection(newDir, true);
 }));
