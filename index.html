@@ -26,7 +26,16 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow: hidden; }
+
+  /* 🔒 鎖定整頁不能上下滑（防止手機誤滑） */
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    position: fixed;        /* iOS Safari 鎖定關鍵 */
+    width: 100%;
+    overscroll-behavior: none;
+    touch-action: none;     /* 禁止瀏覽器手勢 */
+  }
 
   body {
     font-family: var(--display);
@@ -35,6 +44,13 @@
     user-select: none;
     -webkit-user-select: none;
   }
+
+  /* 但 modal 內的列表、輸入框、畫布要允許正常觸控 */
+  .modal, .modal *, .fish-list, input, textarea {
+    touch-action: auto;
+  }
+  /* 畫布特例：自己處理觸控（畫畫） */
+  #canvas { touch-action: none; }
 
   #aquarium {
     position: fixed;
@@ -150,7 +166,7 @@
     box-shadow: inset -1px 0 2px rgba(0,0,0,0.3);
   }
 
-  /* ===== 魚 — 回歸純 CSS animation，瀏覽器自己處理就順 ===== */
+  /* ===== 魚 — 純 CSS animation，瀏覽器自己處理 ===== */
   .fish-wrap {
     position: absolute;
     pointer-events: auto;
@@ -159,25 +175,20 @@
   }
   .fish-wrap:hover { filter: brightness(1.15); }
 
-  /* 頭朝左的魚：先從右往左游，再翻身往右游，這算一個來回。共 3 個來回。 */
+  /* 頭朝左：先從右往左游，翻身往右游，這算一個來回 */
   .fish-wrap.swim-left {
-    animation: swimRoundLeft linear forwards;
-    animation-iteration-count: 3;
+    animation: swimRoundLeft linear infinite;  /* infinite = 無限循環 */
   }
   @keyframes swimRoundLeft {
-    /* 第一階段：頭朝左，從右游到左 */
     0%     { transform: translateX(calc(100vw - 100px)) scaleX(1); }
     49.9%  { transform: translateX(0) scaleX(1); }
-    /* 翻身（瞬間） */
     50%    { transform: translateX(0) scaleX(-1); }
-    /* 第二階段：頭朝右（鏡像後），從左游到右 */
     100%   { transform: translateX(calc(100vw - 100px)) scaleX(-1); }
   }
 
-  /* 頭朝右的魚：先從左往右游，再翻身往左游 */
+  /* 頭朝右：先從左往右游，翻身往左游 */
   .fish-wrap.swim-right {
-    animation: swimRoundRight linear forwards;
-    animation-iteration-count: 3;
+    animation: swimRoundRight linear infinite;
   }
   @keyframes swimRoundRight {
     0%     { transform: translateX(0) scaleX(1); }
@@ -317,9 +328,8 @@
   }
   .modal-bg.open .modal { transform: translateY(0) scale(1); }
 
-  /* 畫畫視窗特化：高度撐滿可視範圍，內部 flex 自動配置，右下角可拖動縮放 */
+  /* 畫畫視窗特化 */
   #draw-modal {
-    /* 不用 flex 置中（會跟 resize 衝突），改用絕對定位 */
     align-items: flex-start;
     justify-content: flex-start;
     padding: 0 !important;
@@ -335,11 +345,9 @@
     display: flex;
     flex-direction: column;
     padding: 14px 16px;
-    resize: both;       /* 啟用右下角拖動縮放 */
-    /* 預設置中（用 margin auto 達成，resize 後 margin 失效，元素停在拖到的位置） */
+    resize: both;
     margin: 2vh auto;
   }
-  /* 右下角拖動把手強化視覺 */
   #draw-modal .modal::after {
     content: '';
     position: absolute;
@@ -407,13 +415,7 @@
   }
   .btn-close:hover { background: rgba(0, 40, 68, 0.08); color: var(--ink); }
 
-  /* ===== 畫畫工具列（在畫布上方） =====
-     【尺寸調整位置】
-     - 工具列字級：.toolbar-label 的 font-size
-     - 顏色圓圈大小：.swatch 的 width/height
-     - 工具按鈕大小：.tool-btn 的 width/height
-     - 粗細滑桿寬度：.size-slider input 的 width
-  */
+  /* ===== 工具列 ===== */
   .toolbar {
     display: flex;
     align-items: center;
@@ -425,19 +427,11 @@
     flex-wrap: wrap;
     box-shadow: 0 2px 8px rgba(0, 40, 68, 0.06);
   }
-  .toolbar-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .toolbar-divider {
-    width: 1px;
-    height: 28px;
-    background: rgba(0, 40, 68, 0.1);
-  }
+  .toolbar-group { display: flex; align-items: center; gap: 8px; }
+  .toolbar-divider { width: 1px; height: 28px; background: rgba(0, 40, 68, 0.1); }
   .toolbar-label {
     font-family: var(--mono);
-    font-size: 16px;          /* 標籤字 (色 / 工具 / 粗) */
+    font-size: 16px;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: #7a8590;
@@ -445,7 +439,7 @@
     font-weight: 500;
   }
   .swatch {
-    width: 30px; height: 30px;   /* 顏色圓圈大小 */
+    width: 30px; height: 30px;
     border-radius: 50%;
     cursor: pointer;
     border: 2.5px solid transparent;
@@ -455,17 +449,12 @@
   .swatch:hover { transform: scale(1.15); }
   .swatch.active { border-color: var(--ink); transform: scale(1.15); }
 
-  /* 自訂顏色選擇器（彩虹圖示） */
   .swatch-custom {
     width: 30px; height: 30px;
     border-radius: 50%;
     cursor: pointer;
     border: 2.5px solid transparent;
-    background: conic-gradient(
-      from 0deg,
-      #ff5a3c, #ffc857, #16a34a,
-      #1ba0c8, #7c3aed, #e11d48, #ff5a3c
-    );
+    background: conic-gradient(from 0deg, #ff5a3c, #ffc857, #16a34a, #1ba0c8, #7c3aed, #e11d48, #ff5a3c);
     position: relative;
     flex-shrink: 0;
     transition: transform 0.15s;
@@ -495,7 +484,7 @@
   }
 
   .tool-btn {
-    width: 40px; height: 40px;    /* 工具按鈕大小 */
+    width: 40px; height: 40px;
     border: 1.5px solid rgba(0, 40, 68, 0.15);
     background: #fff;
     border-radius: 10px;
@@ -503,7 +492,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;              /* 工具圖示大小 */
+    font-size: 20px;
     transition: all 0.15s;
     color: var(--ink);
   }
@@ -513,15 +502,8 @@
     color: #fff;
     border-color: var(--ink);
   }
-  .size-slider {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .size-slider input {
-    width: 120px;                /* 粗細滑桿寬度 */
-    accent-color: var(--coral);
-  }
+  .size-slider { display: flex; align-items: center; gap: 8px; }
+  .size-slider input { width: 120px; accent-color: var(--coral); }
   .size-preview {
     width: 32px;
     height: 32px;
@@ -572,8 +554,6 @@
   #canvas-placeholder .fish-icon { font-size: 36px; margin-bottom: 4px; opacity: 0.7; }
   #canvas-wrap.has-drawing #canvas-placeholder { opacity: 0; }
 
-  /* 畫布左右的頭朝向標記
-     【尺寸調整位置】這裡的 padding 跟 font-size */
   .head-marker {
     position: absolute;
     top: 50%;
@@ -582,10 +562,10 @@
     align-items: center;
     gap: 5px;
     background: rgba(255, 255, 255, 0.95);
-    padding: 9px 14px;            /* 頭標記 padding */
+    padding: 9px 14px;
     border-radius: 999px;
     font-family: var(--mono);
-    font-size: 13px;              /* 文字大小 */
+    font-size: 13px;
     color: #7a8590;
     cursor: pointer;
     border: 2px solid rgba(0, 40, 68, 0.1);
@@ -604,13 +584,7 @@
   .head-arrow { font-size: 14px; }
   .head-label { font-family: var(--display); font-weight: 700; font-size: 15px; }
 
-  /* ===== 底部列：名字 + 頭朝向 + 按鈕 =====
-     【尺寸調整位置】
-     - 整列高度：靠 .name-input 和 .btn 的 padding 決定
-     - 名字輸入框字級：.name-input 的 font-size
-     - 頭朝向按鈕：.head-quickpick button 的 padding 和 font-size
-     - 清除/送出按鈕：.btn 的 padding 和 font-size
-  */
+  /* ===== 底部列 ===== */
   .bottom-row {
     display: flex;
     align-items: center;
@@ -619,48 +593,84 @@
   }
   .name-input {
     flex: 1;
-    padding: 14px 18px;          /* 名字框高度 */
+    padding: 14px 18px;
     border: 1.5px solid rgba(0, 40, 68, 0.15);
     border-radius: 12px;
     font-family: var(--display);
-    font-size: 17px;             /* 名字框字級 */
+    font-size: 17px;
     color: var(--ink);
     background: #fff;
     outline: none;
     min-width: 0;
   }
   .name-input:focus { border-color: var(--coral); }
-  .head-quickpick {
+
+  /* ===== Undo / Redo 按鈕（取代頭朝向） ===== */
+  .undo-redo {
     display: flex;
     background: #fff;
     border: 1.5px solid rgba(0, 40, 68, 0.15);
     border-radius: 12px;
-    padding: 5px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .undo-redo button {
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--ink);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+  }
+  .undo-redo button:hover:not(:disabled) {
+    background: rgba(0, 40, 68, 0.06);
+  }
+  .undo-redo button:disabled {
+    color: #c5cdd4;
+    cursor: not-allowed;
+  }
+
+  /* 頭朝向（縮小版，在工具列右側） */
+  .head-quickpick {
+    display: flex;
+    background: #fff;
+    border: 1.5px solid rgba(0, 40, 68, 0.15);
+    border-radius: 10px;
+    padding: 3px;
     gap: 2px;
   }
   .head-quickpick button {
     background: transparent;
     border: none;
-    padding: 10px 16px;          /* 頭朝向按鈕 padding */
+    padding: 6px 12px;
     font-family: var(--display);
     font-weight: 700;
-    font-size: 16px;             /* 頭朝向按鈕字級 */
+    font-size: 14px;
     color: #7a8590;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 7px;
     transition: all 0.15s;
   }
   .head-quickpick button.active {
     background: var(--coral);
     color: #fff;
   }
+
   .btn {
-    padding: 14px 22px;          /* 清除/送出按鈕 padding */
+    padding: 14px 22px;
     border-radius: 12px;
     border: none;
     font-family: var(--display);
     font-weight: 700;
-    font-size: 16px;             /* 清除/送出按鈕字級 */
+    font-size: 16px;
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
     white-space: nowrap;
@@ -679,6 +689,13 @@
   }
   .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0, 40, 68, 0.35); }
   .btn-primary:disabled { background: #9aa5b1; cursor: not-allowed; box-shadow: none; transform: none; }
+  .btn-danger {
+    background: #c0392b;
+    color: #fff;
+    font-style: italic;
+    box-shadow: 0 8px 20px rgba(192, 57, 43, 0.25);
+  }
+  .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(192, 57, 43, 0.4); }
 
   /* ===== 列表 ===== */
   .list-tabs {
@@ -707,17 +724,6 @@
     box-shadow: 0 2px 6px rgba(0, 40, 68, 0.08);
   }
 
-  /* ===== 排行榜 / 我的魚缸：卡片格狀 =====
-     【尺寸調整位置】
-     - 卡片寬度（幾欄）：.fish-list 的 grid-template-columns
-     - 卡片內部留白：.fish-card 的 padding
-     - 圖片大小：.card-thumb-wrap（aspect-ratio: 1 表示正方形）
-     - 名字字級：.fc-name 的 font-size
-     - 日期字級：.fc-date 的 font-size
-     - 評分字級：.fc-score 的 font-size
-     - 票數字級：.fc-votes 的 font-size
-     - 動作按鈕：.icon-btn 的 width/height
-  */
   #list-modal .modal { max-width: 880px; }
 
   .fish-list {
@@ -726,13 +732,14 @@
     margin: 0 -4px;
     padding: 0 4px;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);  /* 桌面 3 欄 */
+    grid-template-columns: repeat(3, 1fr);
     gap: 14px;
+    -webkit-overflow-scrolling: touch;
   }
   .fish-card {
     background: #fff;
     border-radius: 14px;
-    padding: 14px;                /* 卡片內部留白 */
+    padding: 14px;
     position: relative;
     transition: transform 0.15s, box-shadow 0.15s;
     box-shadow: 0 1px 3px rgba(0, 40, 68, 0.08);
@@ -743,12 +750,11 @@
     box-shadow: 0 6px 18px rgba(0, 40, 68, 0.15);
   }
 
-  /* 名次徽章（金銀銅） */
   .rank-badge {
     position: absolute;
     top: -8px;
     left: -8px;
-    width: 42px;                  /* 徽章大小 */
+    width: 42px;
     height: 38px;
     border-radius: 50%;
     background: var(--gold);
@@ -756,7 +762,7 @@
     font-family: var(--display);
     font-weight: 700;
     font-style: italic;
-    font-size: 24px;              /* 徽章字級 */
+    font-size: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -768,7 +774,6 @@
   .rank-badge.rank-3 { background: #cd9168; color: #fff; }
   .rank-badge.rank-other { background: #f5ede0; color: #7a8590; font-size: 15px; }
 
-  /* 縮圖區 */
   .card-thumb-wrap {
     width: 100%;
     aspect-ratio: 1;
@@ -786,11 +791,10 @@
     object-fit: contain;
   }
 
-  /* 名字 */
   .fc-name {
     font-family: var(--display);
     font-weight: 700;
-    font-size: 18px;              /* 名字字級 */
+    font-size: 18px;
     color: var(--ink);
     text-align: center;
     white-space: nowrap;
@@ -809,14 +813,14 @@
   }
   .fc-date {
     font-family: var(--mono);
-    font-size: 12px;              /* 日期字級 */
+    font-size: 12px;
     color: #9aa5b1;
     text-align: center;
     margin-top: 4px;
   }
   .fc-score {
     font-family: var(--mono);
-    font-size: 18px;              /* 評分字級 */
+    font-size: 18px;
     text-align: center;
     margin-top: 4px;
     font-weight: 600;
@@ -825,7 +829,6 @@
   .fc-score.negative { color: #c0392b; }
   .fc-score.positive { color: #2a9d4a; }
 
-  /* 票數列 */
   .fc-votes {
     display: flex;
     justify-content: space-around;
@@ -833,17 +836,12 @@
     padding-top: 10px;
     border-top: 1px solid rgba(0, 40, 68, 0.06);
     font-family: var(--mono);
-    font-size: 24px;              /* 票數字級 */
+    font-size: 24px;
     color: #7a8590;
     font-weight: 500;
   }
-  .fc-votes span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
+  .fc-votes span { display: flex; align-items: center; gap: 5px; }
 
-  /* 動作按鈕（右上角懸浮） */
   .fc-actions {
     position: absolute;
     top: 6px;
@@ -854,21 +852,18 @@
     transition: opacity 0.15s;
     z-index: 2;
   }
-  .fish-card:hover .fc-actions {
-    opacity: 1;
-  }
-  /* 手機/平板沒有 hover → 常駐顯示 */
+  .fish-card:hover .fc-actions { opacity: 1; }
   @media (hover: none) {
     .fc-actions { opacity: 1; }
   }
 
   .icon-btn {
-    width: 36px; height: 36px;    /* 動作按鈕大小 */
+    width: 36px; height: 36px;
     border: none;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 8px;
     cursor: pointer;
-    font-size: 16px;              /* 按鈕圖示字級 */
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -890,7 +885,6 @@
   }
   .empty-state .em-icon { font-size: 42px; margin-bottom: 12px; opacity: 0.5; }
 
-  /* 平板/手機 RWD：縮成 2 欄 */
   @media (max-width: 720px) {
     .fish-list { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .fish-card { padding: 10px; }
@@ -968,6 +962,39 @@
   .card-btn.fav { font-size: 14px; flex: 0 0 36px; }
   .card-btn.fav.active { background: var(--gold); color: var(--ink); }
 
+  /* ===== 自製確認對話框 ===== */
+  #confirm-dialog .modal {
+    max-width: 380px;
+    text-align: center;
+    padding: 28px 24px;
+  }
+  .confirm-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+  .confirm-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .confirm-msg {
+    font-family: var(--display);
+    font-size: 15px;
+    color: #5a6772;
+    line-height: 1.5;
+    margin-bottom: 22px;
+  }
+  .confirm-msg strong {
+    color: var(--coral);
+    font-weight: 700;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 10px;
+  }
+
   /* ===== 飼料 ===== */
   .food {
     position: absolute;
@@ -1025,7 +1052,6 @@
   }
   #setup-banner.show { display: block; }
 
-  /* 手機豎屏提示 */
   #rotate-prompt {
     position: fixed;
     inset: 0;
@@ -1090,7 +1116,6 @@
     #rotate-prompt { display: flex; }
   }
 
-  /* 小視窗（橫向手機 / 縮小視窗 / 90% 縮放）優化 */
   @media (max-height: 700px) {
     #hud { padding: 12px 16px; }
     .brand { font-size: 22px; }
@@ -1165,10 +1190,8 @@
       <div class="modal-hint"></div>
     </div>
 
-    <!-- 工具列（畫布上方） -->
     <div class="toolbar">
       <div class="toolbar-group">
-       
         <div class="swatch active" data-color="#002844" style="background:#002844"></div>
         <div class="swatch" data-color="#ff5a3c" style="background:#ff5a3c"></div>
         <div class="swatch" data-color="#ffc857" style="background:#ffc857"></div>
@@ -1183,7 +1206,6 @@
       </div>
       <div class="toolbar-divider"></div>
       <div class="toolbar-group">
-
         <button class="tool-btn active" data-tool="pen" title="筆刷">✏️</button>
         <button class="tool-btn" data-tool="eraser" title="橡皮擦">🧽</button>
         <button class="tool-btn" data-tool="line" title="直線">📏</button>
@@ -1196,9 +1218,16 @@
         <input type="range" id="brush-size" min="2" max="40" value="6">
         <div class="size-preview"><div class="size-preview-dot" id="size-preview-dot"></div></div>
       </div>
+      <div class="toolbar-divider"></div>
+      <div class="toolbar-group">
+        <span class="toolbar-label">頭</span>
+        <div class="head-quickpick">
+          <button data-head="left" class="active">← 左</button>
+          <button data-head="right">右 →</button>
+        </div>
+      </div>
     </div>
 
-    <!-- 畫布 -->
     <div id="canvas-wrap">
       <canvas id="canvas" width="1280" height="720"></canvas>
       <div id="canvas-placeholder">
@@ -1213,12 +1242,12 @@
       </div>
     </div>
 
-    <!-- 底部：名字 + 頭朝向 + 按鈕 -->
+    <!-- 底部：名字 + 復原/重做 + 清除 + 送出 -->
     <div class="bottom-row">
       <input type="text" class="name-input" id="fish-name" placeholder="幫牠取個名字（例如：小金）" maxlength="20">
-      <div class="head-quickpick">
-        <button data-head="left" class="active">← 頭</button>
-        <button data-head="right">頭 →</button>
+      <div class="undo-redo">
+        <button id="btn-undo" title="復原上一步" disabled>↶</button>
+        <button id="btn-redo" title="重做下一步" disabled>↷</button>
       </div>
       <button class="btn btn-secondary" id="btn-clear">清除</button>
       <button class="btn btn-primary" id="btn-submit">讓牠游動 →</button>
@@ -1242,6 +1271,19 @@
   </div>
 </div>
 
+<!-- ===== 自製確認對話框 ===== -->
+<div class="modal-bg" id="confirm-dialog">
+  <div class="modal">
+    <div class="confirm-icon" id="confirm-icon">🗑</div>
+    <div class="confirm-title" id="confirm-title">確認刪除</div>
+    <div class="confirm-msg" id="confirm-msg">這個動作不可復原。</div>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" id="confirm-cancel" style="flex:1">取消</button>
+      <button class="btn btn-danger" id="confirm-ok" style="flex:1">確定刪除</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script type="module">
@@ -1253,7 +1295,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 /* ============================================================
-   ⚠️ Firebase Config — 從 Firebase Console 取得後填入
+   ⚠️ Firebase Config
    ============================================================ */
 const firebaseConfig = {
   apiKey:            "AIzaSyCTBtOnwAq2_LzH9MblKappmf-dcA3GsZQ",
@@ -1277,7 +1319,7 @@ if (isConfigured) {
 }
 
 /* ============================================================
-   使用者識別（localStorage）+ 收藏 + 投票
+   使用者識別 + 收藏 + 投票
    ============================================================ */
 function getOrCreateUserId() {
   let uid = localStorage.getItem('drawfish_uid');
@@ -1398,24 +1440,26 @@ function spawnCorals() {
 spawnBubbles(); spawnPlants(); spawnAnemones(); spawnCorals();
 
 /* ============================================================
-   魚兒動畫 — 純 CSS animation，瀏覽器自己跑就順
+   魚兒動畫 — 純 CSS animation，無限循環
    依頭朝向決定游動方向：
    - 頭朝左 → 從右游到左
    - 頭朝右 → 從左游到右
+   
+   超過 40 條時，最舊的會被擠掉（First In First Out）
    ============================================================ */
 
-const MAX_FISHES_IN_TANK = 40; // 同時在水族箱裡最多 40 條
+const MAX_FISHES_IN_TANK = 40;  // 同時最多 40 條
 
 function releaseFish(fishData) {
-  // 上限保護：超過 40 條就把最舊的拿掉
-  const currentCount = aquarium.querySelectorAll('.fish-wrap').length;
-  if (currentCount >= MAX_FISHES_IN_TANK) {
-    const oldest = aquarium.querySelector('.fish-wrap');
+  // 上限保護：超過 40 條 → 把「最舊的（畫面上第一條）」淡出
+  const currentList = aquarium.querySelectorAll('.fish-wrap');
+  if (currentList.length >= MAX_FISHES_IN_TANK) {
+    const oldest = currentList[0];
     if (oldest) {
       swimmingFishes.delete(oldest);
-      oldest.style.transition = 'opacity 0.4s';
+      oldest.style.transition = 'opacity 0.6s';
       oldest.style.opacity = '0';
-      setTimeout(() => oldest.remove(), 400);
+      setTimeout(() => oldest.remove(), 600);
     }
   }
 
@@ -1424,7 +1468,6 @@ function releaseFish(fishData) {
   const wrap = document.createElement('div');
   wrap.className = 'fish-wrap';
   wrap.dataset.fishId = id;
-  // 依頭朝向決定要播哪個動畫
   wrap.classList.add(headDirection === 'left' ? 'swim-left' : 'swim-right');
 
   const bobLayer = document.createElement('div');
@@ -1443,47 +1486,36 @@ function releaseFish(fishData) {
   bobLayer.appendChild(img);
   wrap.appendChild(bobLayer);
 
-  // 隨機高度
   const topVh = 12 + Math.random() * 55;
   wrap.style.top = topVh + 'vh';
 
-  // 一個來回（左→右 或 右→左 完整一次）的時間：12~20 秒
-  // 由於 iteration-count = 3，總共會跑 3 個來回
+  // 一個來回（左→右→左）的時間：12~20 秒，無限循環
   const roundDuration = 12 + Math.random() * 8;
   wrap.style.animationDuration = roundDuration + 's';
 
-  // 上下浮沉延遲隨機
   bobLayer.style.animationDelay = (Math.random() * 2) + 's';
 
-  // 註冊到「正在游的魚」集合（給飼料碰撞用）
   swimmingFishes.add(wrap);
 
-  // 點擊浮卡
   wrap.addEventListener('click', (e) => {
     e.stopPropagation();
     showFishCard(id, e.clientX, e.clientY);
   });
 
-  // 動畫結束（跑完 3 個來回）→ 淡出消失
-  wrap.addEventListener('animationend', (e) => {
-    if (e.animationName === 'swimRoundLeft' || e.animationName === 'swimRoundRight') {
-      swimmingFishes.delete(wrap);
-      wrap.style.transition = 'opacity 1s';
-      wrap.style.opacity = '0';
-      setTimeout(() => wrap.remove(), 1000);
-    }
-  });
+  // 注意：因為動畫改為 infinite，已經不需要 animationend 移除事件
+  // 魚只有兩種狀況會消失：
+  // (1) 被擠掉（上面的 MAX_FISHES_IN_TANK 邏輯）
+  // (2) Firebase 刪除（onChildRemoved）
 
   aquarium.appendChild(wrap);
 }
 
 /* ============================================================
-   飼料碰撞偵測：魚游過飼料時，飼料消失（看起來像被吃了）
+   飼料碰撞偵測：魚游過飼料時，飼料消失
    ============================================================ */
-const swimmingFishes = new Set(); // 正在游的魚 wrap
-const activeFood = new Set();     // 還在掉的飼料元素
+const swimmingFishes = new Set();
+const activeFood = new Set();
 
-// 每 100ms 檢查一次碰撞
 setInterval(() => {
   if (activeFood.size === 0 || swimmingFishes.size === 0) return;
 
@@ -1499,10 +1531,8 @@ setInterval(() => {
     for (const fish of swimmingFishes) {
       if (!fish.parentNode) continue;
       const r = fish.getBoundingClientRect();
-      // 魚張開的「嘴巴範圍」(整個身體 + 一點 buffer)
       if (fx >= r.left - 10 && fx <= r.right + 10 &&
           fy >= r.top - 10  && fy <= r.bottom + 10) {
-        // 被吃了！讓飼料快速縮放消失
         food.style.transition = 'transform 0.2s ease-out, opacity 0.2s';
         food.style.transform += ' scale(0)';
         food.style.opacity = '0';
@@ -1514,12 +1544,6 @@ setInterval(() => {
   }
 }, 100);
 
-/* ============================================================
-   飼料系統 — 會被魚吃掉
-   ============================================================ */
-/* ============================================================
-   飼料系統（純 CSS animation + 碰撞偵測）
-   ============================================================ */
 function spawnFood(clickX, clickY) {
   const count = 4 + Math.floor(Math.random() * 3);
   for (let i = 0; i < count; i++) {
@@ -1575,8 +1599,10 @@ if (isConfigured) {
   onChildRemoved(fishesRef, (snap) => {
     const id = snap.key;
     delete fishDB[id];
-    // 把畫面上正在游的同 id 魚也移除
-    aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`).forEach(el => el.remove());
+    aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`).forEach(el => {
+      swimmingFishes.delete(el);
+      el.remove();
+    });
     if (currentCardFishId === id) hideFishCard();
   });
 }
@@ -1594,17 +1620,85 @@ const sizePreviewDot = document.getElementById('size-preview-dot');
 const swatches  = document.querySelectorAll('.swatch');
 const toolBtns  = document.querySelectorAll('.tool-btn');
 const fishName  = document.getElementById('fish-name');
+const undoBtn   = document.getElementById('btn-undo');
+const redoBtn   = document.getElementById('btn-redo');
 const ctx       = canvas.getContext('2d');
 
 let drawing = false;
 let lastX = 0, lastY = 0;
 let startX = 0, startY = 0;
 let currentColor = '#002844';
-let currentTool = 'pen'; // pen | eraser | line | circle | rect
+let currentTool = 'pen';
 let headDirection = 'left';
-let snapshot = null; // 形狀工具用的暫存
+let snapshot = null;
 
-// 粗細預覽
+/* ============================================================
+   復原 / 重做（Undo / Redo）
+   每完成一筆操作，將當前畫布存入 undoStack
+   按復原時把 undoStack 最後一個搬到 redoStack，重畫前一個狀態
+   ============================================================ */
+const undoStack = []; // 已完成的歷史狀態
+const redoStack = []; // 被復原掉的狀態
+const MAX_HISTORY = 30; // 最多保留 30 步
+
+function snapshotCanvas() {
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
+function restoreCanvas(imageData) {
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function pushHistory() {
+  // 每次新操作，清空重做堆疊
+  redoStack.length = 0;
+  undoStack.push(snapshotCanvas());
+  if (undoStack.length > MAX_HISTORY) undoStack.shift();
+  updateUndoRedoButtons();
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  // 把目前狀態存到 redoStack
+  redoStack.push(snapshotCanvas());
+  // 取出最後一個歷史狀態套用
+  const prev = undoStack.pop();
+  restoreCanvas(prev);
+  // 更新空白判斷
+  canvasWrap.classList.toggle('has-drawing', !canvasIsBlank());
+  updateUndoRedoButtons();
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(snapshotCanvas());
+  const next = redoStack.pop();
+  restoreCanvas(next);
+  canvasWrap.classList.toggle('has-drawing', !canvasIsBlank());
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  undoBtn.disabled = undoStack.length === 0;
+  redoBtn.disabled = redoStack.length === 0;
+}
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+
+// 鍵盤快捷鍵
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('draw-modal').classList.contains('open')) return;
+  if (document.activeElement === fishName) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
+  } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+    e.preventDefault();
+    redo();
+  }
+});
+
 function updateSizePreview() {
   const s = Math.min(parseInt(brushSize.value), 22);
   sizePreviewDot.style.width = s + 'px';
@@ -1613,7 +1707,6 @@ function updateSizePreview() {
 }
 brushSize.addEventListener('input', updateSizePreview);
 
-// 顏色
 swatches.forEach(sw => {
   sw.addEventListener('click', () => {
     swatches.forEach(s => s.classList.remove('active'));
@@ -1624,7 +1717,6 @@ swatches.forEach(sw => {
   });
 });
 
-// 自訂顏色（彩虹按鈕）
 const customColorInput = document.getElementById('custom-color');
 const swatchCustom = document.querySelector('.swatch-custom');
 if (customColorInput && swatchCustom) {
@@ -1636,7 +1728,6 @@ if (customColorInput && swatchCustom) {
   });
 }
 
-// 工具
 toolBtns.forEach(b => {
   b.addEventListener('click', () => {
     toolBtns.forEach(x => x.classList.remove('active'));
@@ -1645,7 +1736,6 @@ toolBtns.forEach(b => {
   });
 });
 
-// 頭朝向（左右兩種同步切換）
 const headMarkers = document.querySelectorAll('.head-marker');
 const headQuickBtns = document.querySelectorAll('.head-quickpick button');
 function setHeadDirection(dir) {
@@ -1662,6 +1752,9 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 summonBtn.addEventListener('click', () => {
   clearCanvas();
   fishName.value = '';
+  undoStack.length = 0;
+  redoStack.length = 0;
+  updateUndoRedoButtons();
   openModal('draw-modal');
 });
 document.querySelectorAll('[data-close]').forEach(btn => {
@@ -1689,6 +1782,9 @@ function getStrokeWidth() {
 
 function startDraw(e) {
   e.preventDefault();
+  // 開始畫之前，把當下狀態存起來（給 undo 用）
+  pushHistory();
+
   drawing = true;
   const p = getPos(e);
   lastX = p.x; lastY = p.y;
@@ -1710,7 +1806,6 @@ function startDraw(e) {
       ctx.fill();
     }
   } else {
-    // 形狀工具：先存畫面
     snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 }
@@ -1744,13 +1839,11 @@ function moveDraw(e) {
     ctx.restore();
     lastX = p.x; lastY = p.y;
   } else if (snapshot) {
-    // 還原 + 重畫形狀（橡皮筋效果）
     ctx.putImageData(snapshot, 0, 0);
     ctx.strokeStyle = currentColor;
     ctx.lineWidth = sw;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
     if (currentTool === 'line') {
       ctx.beginPath();
       ctx.moveTo(startX, startY);
@@ -1782,6 +1875,7 @@ canvas.addEventListener('touchmove', moveDraw, { passive: false });
 canvas.addEventListener('touchend', endDraw);
 
 function clearCanvas() {
+  if (!canvasIsBlank()) pushHistory(); // 清除前也存歷史
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   canvasWrap.classList.remove('has-drawing');
 }
@@ -1871,6 +1965,41 @@ submitBtn.addEventListener('click', async () => {
 updateSizePreview();
 
 /* ============================================================
+   自製確認對話框（取代瀏覽器的 confirm）
+   ============================================================ */
+const confirmDialog = document.getElementById('confirm-dialog');
+const confirmIcon   = document.getElementById('confirm-icon');
+const confirmTitle  = document.getElementById('confirm-title');
+const confirmMsg    = document.getElementById('confirm-msg');
+const confirmOkBtn  = document.getElementById('confirm-ok');
+const confirmNoBtn  = document.getElementById('confirm-cancel');
+
+function showConfirm({ icon = '⚠️', title = '請確認', message = '', okText = '確定', cancelText = '取消', danger = false }) {
+  return new Promise((resolve) => {
+    confirmIcon.textContent = icon;
+    confirmTitle.textContent = title;
+    confirmMsg.innerHTML = message;
+    confirmOkBtn.textContent = okText;
+    confirmNoBtn.textContent = cancelText;
+    confirmOkBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+    confirmDialog.classList.add('open');
+
+    const cleanup = () => {
+      confirmDialog.classList.remove('open');
+      confirmOkBtn.removeEventListener('click', onOk);
+      confirmNoBtn.removeEventListener('click', onNo);
+      confirmDialog.removeEventListener('click', onBg);
+    };
+    const onOk = () => { cleanup(); resolve(true); };
+    const onNo = () => { cleanup(); resolve(false); };
+    const onBg = (e) => { if (e.target === confirmDialog) { cleanup(); resolve(false); } };
+    confirmOkBtn.addEventListener('click', onOk);
+    confirmNoBtn.addEventListener('click', onNo);
+    confirmDialog.addEventListener('click', onBg);
+  });
+}
+
+/* ============================================================
    排行榜 / 我的魚缸
    ============================================================ */
 const listTitle = document.getElementById('list-title');
@@ -1882,7 +2011,7 @@ let currentListMode = 'leaderboard';
 document.getElementById('open-leaderboard').addEventListener('click', () => {
   currentListMode = 'leaderboard';
   listTitle.innerHTML = '排行榜';
-  listHint.textContent = 'TOP FISHES';
+  listHint.textContent = '';
   myTabs.style.display = 'none';
   renderList();
   openModal('list-modal');
@@ -1937,7 +2066,6 @@ function renderList() {
     const score = fish.likes - fish.dislikes;
     const fav = isFavorite(fish.id);
 
-    // 排名徽章
     let rankHTML = '';
     if (currentListMode === 'leaderboard') {
       let rankCls = 'rank-other';
@@ -1948,11 +2076,8 @@ function renderList() {
       rankHTML = `<div class="rank-badge ${rankCls}">${rankText}</div>`;
     }
 
-    // 日期
     const d = new Date(fish.createdAt || Date.now());
     const dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-
-    // 分數樣式
     const scoreCls = score > 0 ? 'positive' : score < 0 ? 'negative' : '';
     const scoreStr = `評分：${score >= 0 ? '+' : ''}${score}`;
 
@@ -1975,13 +2100,11 @@ function renderList() {
       </div>
     `;
 
-    // 點卡片本身（不是按鈕）= 放進魚缸
     card.addEventListener('click', (e) => {
       if (e.target.closest('.icon-btn')) return;
       releaseFish(fish);
       showToast(`「${fish.name}」游進魚缸了 🐟`);
     });
-
     card.querySelector('.release-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       releaseFish(fish);
@@ -2004,10 +2127,22 @@ function renderList() {
 }
 
 async function deleteFish(id, name) {
-  if (!confirm(`確定要刪除「${name}」嗎？\n排行榜上也會一起消失喔。`)) return;
+  const ok = await showConfirm({
+    icon: '🗑',
+    title: '刪除這隻魚？',
+    message: `<strong>「${escapeHTML(name)}」</strong> 將從排行榜永遠消失。<br>此動作無法復原。`,
+    okText: '確定刪除',
+    cancelText: '取消',
+    danger: true,
+  });
+  if (!ok) return;
+
   if (!isConfigured) {
     delete fishDB[id];
-    aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`).forEach(el => el.remove());
+    aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`).forEach(el => {
+      swimmingFishes.delete(el);
+      el.remove();
+    });
     renderList();
     showToast(`「${name}」已刪除`);
     return;
