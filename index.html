@@ -1388,6 +1388,211 @@
     #rotate-prompt { display: flex; }
   }
 
+  /* ===== 歡迎/登入畫面 ===== */
+  #welcome-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--mid) 60%, var(--abyss) 100%);
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  #welcome-screen.show { display: flex; }
+  #welcome-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 2px, transparent 2px, transparent 60px),
+      repeating-linear-gradient(65deg,  rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 2px, transparent 2px, transparent 90px);
+    pointer-events: none;
+  }
+  .welcome-box {
+    background: linear-gradient(180deg, #fdfaf3 0%, #f5ede0 100%);
+    border-radius: 24px;
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+    position: relative;
+    z-index: 1;
+  }
+  .welcome-logo {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .welcome-emoji {
+    font-size: 56px;
+    margin-bottom: 8px;
+  }
+  .welcome-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 26px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .welcome-title span {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--coral);
+  }
+  .welcome-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #7a8590;
+    margin-top: 6px;
+  }
+  .welcome-section { margin-bottom: 18px; }
+  .welcome-label {
+    display: block;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .welcome-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid rgba(0, 40, 68, 0.15);
+    border-radius: 12px;
+    font-family: var(--display);
+    font-size: 17px;
+    color: var(--ink);
+    background: #fff;
+    outline: none;
+    margin-bottom: 6px;
+  }
+  .welcome-input:focus { border-color: var(--coral); }
+  .welcome-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #7a8590;
+    margin-bottom: 12px;
+    min-height: 16px;
+  }
+  .welcome-hint.error { color: #c0392b; }
+  .welcome-hint.ok { color: #2a9d4a; }
+  .welcome-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .welcome-btn.primary {
+    background: var(--ink);
+    color: #fff;
+    font-style: italic;
+    box-shadow: 0 8px 20px rgba(0, 40, 68, 0.25);
+  }
+  .welcome-btn.primary:hover { transform: translateY(-2px); }
+  .welcome-btn.primary:disabled {
+    background: #9aa5b1;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+  .welcome-btn.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid rgba(0, 40, 68, 0.2);
+  }
+  .welcome-btn.secondary:hover { background: rgba(0, 40, 68, 0.05); }
+  .welcome-divider {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    color: #9aa5b1;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .welcome-divider::before, .welcome-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(0, 40, 68, 0.1);
+  }
+  .welcome-divider span { padding: 0 14px; }
+  .welcome-foot {
+    text-align: center;
+    margin-top: 18px;
+    font-family: var(--display);
+    font-size: 13px;
+    color: #7a8590;
+  }
+  .welcome-foot a {
+    color: var(--coral);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .switch-section { padding: 4px 0; }
+  .switch-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  /* 我的清單頂部的身份條 */
+  .my-id-bar {
+    background: linear-gradient(135deg, rgba(255,200,87,0.15), rgba(255,90,60,0.08));
+    border: 1.5px solid rgba(255,200,87,0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .my-id-bar .id-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #7a8590;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+  .my-id-bar .id-value {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--ink);
+    flex: 1;
+    word-break: break-all;
+  }
+  .my-id-bar .id-btn {
+    background: #fff;
+    border: 1.5px solid rgba(0, 40, 68, 0.15);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--ink);
+    transition: all 0.15s;
+  }
+  .my-id-bar .id-btn:hover {
+    background: var(--ink);
+    color: #fff;
+  }
+  .my-id-bar .id-btn.danger:hover {
+    background: var(--coral);
+    border-color: var(--coral);
+  }
+
   @media (max-height: 700px) {
     #hud { padding: 12px 16px; }
     .brand { font-size: 22px; }
@@ -1405,6 +1610,78 @@
 </style>
 </head>
 <body>
+
+<!-- ===== 歡迎/登入畫面 ===== -->
+<div id="welcome-screen">
+  <div class="welcome-box">
+    <div class="welcome-logo">
+      <div class="welcome-emoji">🐟</div>
+      <div class="welcome-title">歡迎來到 <span>Drawfish</span></div>
+      <div class="welcome-sub">A Global Aquarium</div>
+    </div>
+
+    <div class="welcome-section">
+      <label class="welcome-label">取個名字（之後找回用）</label>
+      <input type="text" id="welcome-name" class="welcome-input"
+             placeholder="例如：小明、阿魚、john2025" maxlength="20">
+      <div class="welcome-hint" id="welcome-hint">3~20 字元，可用中英數、_ -</div>
+      <button class="welcome-btn primary" id="welcome-create">建立我的身份</button>
+    </div>
+
+    <div class="welcome-divider"><span>或</span></div>
+
+    <button class="welcome-btn secondary" id="welcome-guest">
+      🎲 訪客模式進入
+    </button>
+
+    <div class="welcome-foot">
+      已有代碼？<a href="#" id="welcome-existing">點此登入</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 切換身份對話框 ===== -->
+<div class="modal-bg" id="switch-id-modal">
+  <div class="modal">
+    <button class="btn-close" data-close="switch-id-modal">✕</button>
+    <div class="modal-header">
+      <div class="modal-title">切換 <em>身份</em></div>
+    </div>
+    <div class="switch-section">
+      <label class="welcome-label">輸入代碼登入別的身份</label>
+      <input type="text" id="switch-id-input" class="welcome-input"
+             placeholder="輸入你的身份代碼" maxlength="20">
+      <div class="welcome-hint" id="switch-id-hint"></div>
+      <div class="switch-actions">
+        <button class="btn btn-secondary" data-close="switch-id-modal" style="flex:1">取消</button>
+        <button class="btn btn-primary" id="switch-id-confirm" style="flex:1">切換</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 改名對話框 ===== -->
+<div class="modal-bg" id="rename-modal">
+  <div class="modal">
+    <button class="btn-close" data-close="rename-modal">✕</button>
+    <div class="modal-header">
+      <div class="modal-title">修改 <em>身份代碼</em></div>
+    </div>
+    <div class="switch-section">
+      <label class="welcome-label">新的代碼</label>
+      <input type="text" id="rename-input" class="welcome-input"
+             placeholder="新的代碼" maxlength="20">
+      <div class="welcome-hint" id="rename-hint">3~20 字元，可用中英數、_ -</div>
+      <div class="welcome-hint" style="color: var(--coral); margin-top: 8px;">
+        ⚠️ 改名後，你之前畫的魚會自動歸到新代碼
+      </div>
+      <div class="switch-actions">
+        <button class="btn btn-secondary" data-close="rename-modal" style="flex:1">取消</button>
+        <button class="btn btn-primary" id="rename-confirm" style="flex:1">確定改名</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="setup-banner">⚠️ 請在程式碼底部填入 Firebase Config 才能正式上線（目前為本地預覽）</div>
 
@@ -1602,17 +1879,48 @@ if (isConfigured) {
 }
 
 /* ============================================================
-   使用者識別 + 收藏 + 投票
+   使用者識別系統 — 支援自訂代碼 / 訪客模式
    ============================================================ */
-function getOrCreateUserId() {
-  let uid = localStorage.getItem('drawfish_uid');
-  if (!uid) {
-    uid = 'u_' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
-    localStorage.setItem('drawfish_uid', uid);
+
+// 驗證代碼格式：3~20 字元、中英數+底線+連字號
+function validateUserId(id) {
+  if (!id || typeof id !== 'string') return { ok: false, reason: '請輸入代碼' };
+  const trimmed = id.trim();
+  if (trimmed.length < 3) return { ok: false, reason: '太短了，至少 3 個字元' };
+  if (trimmed.length > 20) return { ok: false, reason: '太長了，最多 20 個字元' };
+  // 允許：英數、中文、底線、連字號
+  if (!/^[a-zA-Z0-9_\-\u4e00-\u9fa5]+$/.test(trimmed)) {
+    return { ok: false, reason: '只能用中英數、底線、連字號' };
   }
-  return uid;
+  return { ok: true, value: trimmed };
 }
-const USER_ID = getOrCreateUserId();
+
+// 標準化代碼（英文小寫，方便比對）
+function normalizeUserId(id) {
+  return id.trim().toLowerCase();
+}
+
+// 產生訪客代碼：guest_xxxxxx
+function generateGuestId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 去掉容易混淆的字
+  let s = '';
+  for (let i = 0; i < 6; i++) {
+    s += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return 'guest_' + s;
+}
+
+function getCurrentUserId() {
+  return localStorage.getItem('drawfish_uid');
+}
+function setCurrentUserId(id) {
+  localStorage.setItem('drawfish_uid', id);
+}
+function clearCurrentUserId() {
+  localStorage.removeItem('drawfish_uid');
+}
+
+let USER_ID = getCurrentUserId();  // 可能是 null（第一次來）
 
 function getFavorites() {
   try { return JSON.parse(localStorage.getItem('drawfish_favs') || '[]'); } catch { return []; }
@@ -1636,6 +1944,87 @@ function setVote(id, type) {
 }
 
 const fishDB = {};
+
+/* ============================================================
+   歡迎/登入流程
+   ============================================================ */
+const welcomeScreen   = document.getElementById('welcome-screen');
+const welcomeName     = document.getElementById('welcome-name');
+const welcomeHint     = document.getElementById('welcome-hint');
+const welcomeCreate   = document.getElementById('welcome-create');
+const welcomeGuest    = document.getElementById('welcome-guest');
+const welcomeExisting = document.getElementById('welcome-existing');
+
+function showWelcome() {
+  welcomeScreen.classList.add('show');
+  welcomeName.value = '';
+  welcomeHint.textContent = '3~20 字元，可用中英數、_ -';
+  welcomeHint.className = 'welcome-hint';
+  // 改回「建立身份」模式
+  welcomeCreate.textContent = '建立我的身份';
+  welcomeCreate.dataset.mode = 'create';
+  welcomeName.placeholder = '例如：小明、阿魚、john2025';
+}
+function hideWelcome() {
+  welcomeScreen.classList.remove('show');
+}
+
+// 即時驗證
+welcomeName.addEventListener('input', () => {
+  const v = welcomeName.value;
+  if (!v) {
+    welcomeHint.textContent = '3~20 字元，可用中英數、_ -';
+    welcomeHint.className = 'welcome-hint';
+    return;
+  }
+  const r = validateUserId(v);
+  if (r.ok) {
+    welcomeHint.textContent = '✓ 格式正確';
+    welcomeHint.className = 'welcome-hint ok';
+  } else {
+    welcomeHint.textContent = '✗ ' + r.reason;
+    welcomeHint.className = 'welcome-hint error';
+  }
+});
+
+welcomeCreate.addEventListener('click', () => {
+  const r = validateUserId(welcomeName.value);
+  if (!r.ok) {
+    welcomeHint.textContent = '✗ ' + r.reason;
+    welcomeHint.className = 'welcome-hint error';
+    return;
+  }
+  USER_ID = normalizeUserId(r.value);
+  setCurrentUserId(USER_ID);
+  hideWelcome();
+  showToast(welcomeCreate.dataset.mode === 'login'
+    ? `歡迎回來，${USER_ID}！`
+    : `身份建立成功：${USER_ID}`);
+});
+
+welcomeGuest.addEventListener('click', () => {
+  USER_ID = generateGuestId();
+  setCurrentUserId(USER_ID);
+  hideWelcome();
+  showToast(`訪客身份：${USER_ID}（記得抄下來）`);
+});
+
+// 「已有代碼？點此登入」 → 切換歡迎畫面為「登入既有代碼」
+welcomeExisting.addEventListener('click', (e) => {
+  e.preventDefault();
+  welcomeCreate.textContent = '登入';
+  welcomeCreate.dataset.mode = 'login';
+  welcomeName.placeholder = '輸入你的代碼';
+  welcomeName.focus();
+  welcomeHint.textContent = '輸入之前建立的代碼';
+  welcomeHint.className = 'welcome-hint';
+});
+
+// 啟動時：沒身份就顯示歡迎畫面
+if (!USER_ID) {
+  // 等 DOM 全部 ready 再顯示
+  setTimeout(showWelcome, 100);
+}
 
 /* ============================================================
    水族箱裝飾
@@ -2318,6 +2707,7 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 summonBtn.addEventListener('click', () => {
+  if (!USER_ID) { showWelcome(); return; }
   openDrawModalNew();
 });
 
@@ -2704,6 +3094,7 @@ document.getElementById('open-leaderboard').addEventListener('click', () => {
   listTitle.innerHTML = '排行榜';
   listHint.textContent = '';
   myTabs.style.display = 'none';
+  hideMyIdBar();
   renderList();
   openModal('list-modal');
 });
@@ -2713,9 +3104,48 @@ document.getElementById('open-mytank').addEventListener('click', () => {
   listHint.textContent = '';
   myTabs.style.display = 'flex';
   myTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mytab === 'mine'));
+  showMyIdBar();
   renderList();
   openModal('list-modal');
 });
+
+// 在 fish-list 上方插入身份條
+function showMyIdBar() {
+  let bar = document.getElementById('my-id-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'my-id-bar';
+    bar.className = 'my-id-bar';
+    bar.innerHTML = `
+      <span class="id-label">目前身份</span>
+      <span class="id-value">${USER_ID || '(未設定)'}</span>
+      <button class="id-btn" id="my-id-rename">✏️ 改名</button>
+      <button class="id-btn" id="my-id-copy">📋 複製</button>
+      <button class="id-btn danger" id="my-id-switch">🔄 切換</button>
+    `;
+    fishList.parentNode.insertBefore(bar, fishList);
+
+    bar.querySelector('#my-id-rename').addEventListener('click', openRenameDialog);
+    bar.querySelector('#my-id-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(USER_ID);
+        showToast(`已複製代碼：${USER_ID}`);
+      } catch {
+        showToast(`你的代碼：${USER_ID}（請手動抄寫）`);
+      }
+    });
+    bar.querySelector('#my-id-switch').addEventListener('click', openSwitchIdDialog);
+  } else {
+    bar.querySelector('.id-value').textContent = USER_ID || '(未設定)';
+  }
+  bar.style.display = 'flex';
+}
+
+// 切到「排行榜」要隱藏身份條
+function hideMyIdBar() {
+  const bar = document.getElementById('my-id-bar');
+  if (bar) bar.style.display = 'none';
+}
 myTabs.querySelectorAll('.tab').forEach(t => {
   t.addEventListener('click', () => {
     myTabs.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -2966,6 +3396,155 @@ function switchView(mode) {
 
 document.getElementById('view-world').addEventListener('click', () => switchView('world'));
 document.getElementById('view-mine').addEventListener('click', () => switchView('mine'));
+
+/* ============================================================
+   切換身份 / 改名
+   ============================================================ */
+const switchIdInput   = document.getElementById('switch-id-input');
+const switchIdHint    = document.getElementById('switch-id-hint');
+const switchIdConfirm = document.getElementById('switch-id-confirm');
+const renameInput     = document.getElementById('rename-input');
+const renameHint      = document.getElementById('rename-hint');
+const renameConfirm   = document.getElementById('rename-confirm');
+
+function openSwitchIdDialog() {
+  switchIdInput.value = '';
+  switchIdHint.textContent = '';
+  switchIdHint.className = 'welcome-hint';
+  openModal('switch-id-modal');
+  setTimeout(() => switchIdInput.focus(), 100);
+}
+
+switchIdInput.addEventListener('input', () => {
+  const v = switchIdInput.value;
+  if (!v) { switchIdHint.textContent = ''; switchIdHint.className = 'welcome-hint'; return; }
+  const r = validateUserId(v);
+  if (r.ok) {
+    switchIdHint.textContent = '✓ 格式正確';
+    switchIdHint.className = 'welcome-hint ok';
+  } else {
+    switchIdHint.textContent = '✗ ' + r.reason;
+    switchIdHint.className = 'welcome-hint error';
+  }
+});
+
+switchIdConfirm.addEventListener('click', () => {
+  const r = validateUserId(switchIdInput.value);
+  if (!r.ok) {
+    switchIdHint.textContent = '✗ ' + r.reason;
+    switchIdHint.className = 'welcome-hint error';
+    return;
+  }
+  const newId = normalizeUserId(r.value);
+  if (newId === USER_ID) {
+    showToast('已經是這個身份了');
+    closeModal('switch-id-modal');
+    return;
+  }
+  USER_ID = newId;
+  setCurrentUserId(USER_ID);
+  closeModal('switch-id-modal');
+  showToast(`已切換到：${USER_ID}`);
+  renderList();   // 重新渲染列表（變我的清單內容）
+  refreshMyIdBar();
+});
+
+function openRenameDialog() {
+  renameInput.value = USER_ID || '';
+  renameHint.textContent = '3~20 字元，可用中英數、_ -';
+  renameHint.className = 'welcome-hint';
+  openModal('rename-modal');
+  setTimeout(() => renameInput.focus(), 100);
+}
+
+renameInput.addEventListener('input', () => {
+  const v = renameInput.value;
+  if (!v) { renameHint.textContent = '3~20 字元，可用中英數、_ -'; renameHint.className = 'welcome-hint'; return; }
+  const r = validateUserId(v);
+  if (r.ok) {
+    renameHint.textContent = '✓ 格式正確';
+    renameHint.className = 'welcome-hint ok';
+  } else {
+    renameHint.textContent = '✗ ' + r.reason;
+    renameHint.className = 'welcome-hint error';
+  }
+});
+
+renameConfirm.addEventListener('click', async () => {
+  const r = validateUserId(renameInput.value);
+  if (!r.ok) {
+    renameHint.textContent = '✗ ' + r.reason;
+    renameHint.className = 'welcome-hint error';
+    return;
+  }
+  const newId = normalizeUserId(r.value);
+  if (newId === USER_ID) {
+    showToast('新代碼跟舊代碼一樣');
+    return;
+  }
+  const oldId = USER_ID;
+
+  // 找出所有舊 ID 的魚
+  const myFishes = Object.values(fishDB).filter(f => f.ownerId === oldId);
+
+  closeModal('rename-modal');
+
+  if (myFishes.length === 0) {
+    // 沒魚，直接改
+    USER_ID = newId;
+    setCurrentUserId(USER_ID);
+    showToast(`已改名為：${USER_ID}`);
+    refreshMyIdBar();
+    return;
+  }
+
+  // 有魚 → 批次更新 ownerId
+  showToast(`更新中... 正在把 ${myFishes.length} 條魚歸到新代碼`);
+
+  if (!isConfigured) {
+    // 本地模式
+    myFishes.forEach(f => { f.ownerId = newId; });
+    USER_ID = newId;
+    setCurrentUserId(USER_ID);
+    showToast(`已改名為：${USER_ID}（${myFishes.length} 條魚已更新）`);
+    refreshMyIdBar();
+    renderList();
+    return;
+  }
+
+  // Firebase 模式：批次更新
+  let success = 0, fail = 0;
+  for (const fish of myFishes) {
+    try {
+      await runTransaction(ref(db, 'fishes/' + fish.id), (data) => {
+        if (!data) return data;
+        if (data.ownerId === oldId) data.ownerId = newId;
+        return data;
+      });
+      success++;
+    } catch (err) {
+      console.error(err);
+      fail++;
+    }
+  }
+
+  USER_ID = newId;
+  setCurrentUserId(USER_ID);
+  refreshMyIdBar();
+  renderList();
+
+  if (fail === 0) {
+    showToast(`✅ 已改名為：${USER_ID}（${success} 條魚已更新）`);
+  } else {
+    showToast(`已改名（${success} 成功 / ${fail} 失敗）`);
+  }
+});
+
+// 我的清單頂部的身份條
+function refreshMyIdBar() {
+  const bar = document.getElementById('my-id-bar');
+  if (bar) bar.querySelector('.id-value').textContent = USER_ID || '(未設定)';
+}
 
 /* ============================================================
    點魚浮卡
