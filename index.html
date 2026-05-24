@@ -385,13 +385,7 @@
     line-height: 1;
   }
   .modal-title em { font-weight: 500; color: var(--coral); }
-  .modal-hint {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: #7a8590;
-  }
+ 
 
   .btn-close {
     position: absolute;
@@ -1139,7 +1133,7 @@
 
 <button id="summon">
   <span style="font-size:22px">🐟</span>
-  <span>畫一隻魚 放生世界</span>
+  <span>畫一隻魚 放入世界魚缸</span>
 </button>
 
 <div id="fish-card">
@@ -1161,8 +1155,8 @@
   <div class="modal">
     <button class="btn-close" data-close="draw-modal">✕</button>
     <div class="modal-header">
-      <div class="modal-title">畫一隻 <em>魚</em>DRAW · NAME · RELEASE</div>
-      <div class="modal-hint"></div>
+      <div class="modal-title">畫一隻 <em>魚</em></div>
+    
     </div>
 
     <!-- 工具列（畫布上方） -->
@@ -1231,8 +1225,8 @@
   <div class="modal">
     <button class="btn-close" data-close="list-modal">✕</button>
     <div class="modal-header">
-      <div class="modal-title" id="list-title">排行榜 .TOP FISHES</div>
-      <div class="modal-hint" id="list-hint"></div>
+      <div class="modal-title" id="list-title">排行榜</div>
+    
     </div>
     <div class="list-tabs" id="my-tabs" style="display:none">
       <div class="tab active" data-mytab="mine">我畫的</div>
@@ -1889,7 +1883,7 @@ document.getElementById('open-leaderboard').addEventListener('click', () => {
 });
 document.getElementById('open-mytank').addEventListener('click', () => {
   currentListMode = 'mine';
-  listTitle.innerHTML = '我的<em>魚缸</em>MY TANK';
+  listTitle.innerHTML = '我的<em>魚缸</em>';
   listHint.textContent = '';
   myTabs.style.display = 'flex';
   myTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mytab === 'mine'));
