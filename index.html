@@ -45,8 +45,8 @@
     -webkit-user-select: none;
   }
 
-  /* 但 modal 內的列表、輸入框、畫布要允許正常觸控 */
-  .modal, .modal *, .fish-list, input, textarea {
+  /* 但 modal 內的列表、輸入框、畫布、浮卡要允許正常觸控 */
+  .modal, .modal *, .fish-list, input, textarea, #fish-card, #fish-card * {
     touch-action: auto;
   }
   /* 畫布特例：自己處理觸控（畫畫） */
@@ -166,7 +166,7 @@
     box-shadow: inset -1px 0 2px rgba(0,0,0,0.3);
   }
 
-  /* ===== 魚 — 純 CSS animation，瀏覽器自己處理 ===== */
+  /* ===== 魚 — 純 CSS animation ===== */
   .fish-wrap {
     position: absolute;
     pointer-events: auto;
@@ -175,9 +175,9 @@
   }
   .fish-wrap:hover { filter: brightness(1.15); }
 
-  /* 頭朝左：先從右往左游，翻身往右游，這算一個來回 */
+  /* 水平來回（最外層） */
   .fish-wrap.swim-left {
-    animation: swimRoundLeft linear infinite;  /* infinite = 無限循環 */
+    animation: swimRoundLeft linear infinite;
   }
   @keyframes swimRoundLeft {
     0%     { transform: translateX(calc(100vw - 100px)) scaleX(1); }
@@ -185,8 +185,6 @@
     50%    { transform: translateX(0) scaleX(-1); }
     100%   { transform: translateX(calc(100vw - 100px)) scaleX(-1); }
   }
-
-  /* 頭朝右：先從左往右游，翻身往左游 */
   .fish-wrap.swim-right {
     animation: swimRoundRight linear infinite;
   }
@@ -197,13 +195,33 @@
     100%   { transform: translateX(0) scaleX(-1); }
   }
 
-  /* 上下浮沉 */
+  /* 垂直慢慢浮動（第二層） */
+  .fish-vfloat {
+    animation: vfloat ease-in-out infinite alternate;
+  }
+  @keyframes vfloat {
+    0%   { transform: translateY(-30vh); }
+    100% { transform: translateY(20vh); }
+  }
+
+  /* 短週期上下小幅 bob（第三層） */
   .fish-bob {
     animation: bob 3s ease-in-out infinite alternate;
   }
   @keyframes bob {
     0%   { transform: translateY(-5px); }
     100% { transform: translateY(6px); }
+  }
+
+  /* 尾巴擺動（第四層）— 用 transform-origin 控制支點 */
+  .fish-swim {
+    /* --pivot-x 跟 --pivot-y 由 JS 設定（0~100%） */
+    transform-origin: var(--pivot-x, 50%) var(--pivot-y, 50%);
+    animation: tailSwish ease-in-out infinite alternate;
+  }
+  @keyframes tailSwish {
+    0%   { transform: rotate(-6deg); }
+    100% { transform: rotate(6deg); }
   }
 
   .fish-img {
@@ -269,6 +287,18 @@
     box-shadow: 0 6px 20px rgba(0, 40, 68, 0.15);
   }
   .pill-btn .icon { font-size: 16px; }
+
+  /* 視角切換按鈕啟用狀態 */
+  .pill-btn.view-toggle.active {
+    background: var(--coral);
+    color: #fff;
+    border-color: var(--coral);
+    box-shadow: 0 4px 14px rgba(255, 90, 60, 0.4);
+  }
+  .pill-btn.view-toggle.active:hover {
+    background: var(--coral);
+    color: #fff;
+  }
 
   #summon {
     position: fixed;
@@ -583,6 +613,61 @@
   .head-right { right: 10px; }
   .head-arrow { font-size: 14px; }
   .head-label { font-family: var(--display); font-weight: 700; font-size: 15px; }
+
+  /* ===== 擺動支點（標尾巴） ===== */
+  #pivot-marker {
+    position: absolute;
+    /* 初始位置：右下角附近 */
+    left: 80%;
+    top: 80%;
+    width: 0;
+    height: 0;
+    cursor: grab;
+    z-index: 6;
+    pointer-events: auto;
+    /* 讓中心點對齊定位點 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #pivot-marker:active { cursor: grabbing; }
+  .pivot-dot {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--coral);
+    border: 3px solid #fff;
+    box-shadow: 0 4px 14px rgba(255, 90, 60, 0.6), 0 0 0 2px var(--coral);
+    transition: transform 0.15s;
+  }
+  .pivot-dot::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 2px dashed #fff;
+    opacity: 0.7;
+  }
+  #pivot-marker:hover .pivot-dot { transform: scale(1.15); }
+  .pivot-label {
+    position: absolute;
+    top: 32px;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(0, 40, 68, 0.85);
+    padding: 4px 9px;
+    border-radius: 999px;
+    pointer-events: none;
+    opacity: 0.95;
+    transition: opacity 0.2s;
+  }
+  #pivot-marker.dragged .pivot-label {
+    opacity: 0; /* 拖過一次後標籤淡掉 */
+  }
 
   /* ===== 底部列 ===== */
   .bottom-row {
@@ -1205,11 +1290,17 @@
     <span class="sub">A Global Aquarium</span>
   </div>
   <div class="top-controls">
+    <button class="pill-btn view-toggle active" id="view-world" data-view="world">
+      <span class="icon">🌍</span><span>世界魚缸</span>
+    </button>
+    <button class="pill-btn view-toggle" id="view-mine" data-view="mine">
+      <span class="icon">🐠</span><span>我的魚缸</span>
+    </button>
     <button class="pill-btn" id="open-leaderboard">
       <span class="icon">🏆</span><span>排行榜</span>
     </button>
     <button class="pill-btn" id="open-mytank">
-      <span class="icon">🐠</span><span>我的魚缸</span>
+      <span class="icon">📋</span><span>我的清單</span>
     </button>
   </div>
 </header>
@@ -1283,6 +1374,11 @@
       </div>
       <div class="head-marker head-right" data-head="right">
         <span class="head-label">頭</span><span class="head-arrow">▶</span>
+      </div>
+      <!-- 可拖曳的擺動支點（標尾巴） -->
+      <div id="pivot-marker" title="拖動我到尾巴根部，魚就會以這點為中心擺動">
+        <div class="pivot-dot"></div>
+        <div class="pivot-label">🎯 拖到尾巴</div>
       </div>
     </div>
 
@@ -1512,39 +1608,56 @@ function releaseFish(fishData) {
     }
   }
 
-  const { id, image, headDirection = 'left', sizeLevel = 'small' } = fishData;
+  const { id, image, headDirection = 'left', sizeLevel = 'small', pivotX = 0.5, pivotY = 0.5 } = fishData;
 
   const wrap = document.createElement('div');
   wrap.className = 'fish-wrap';
   wrap.dataset.fishId = id;
   wrap.classList.add(headDirection === 'left' ? 'swim-left' : 'swim-right');
 
+  // 第二層：垂直慢慢浮動
+  const vfloatLayer = document.createElement('div');
+  vfloatLayer.className = 'fish-vfloat';
+  // 每條魚的浮動週期不同（15~25 秒），起始相位隨機
+  vfloatLayer.style.animationDuration = (15 + Math.random() * 10) + 's';
+  vfloatLayer.style.animationDelay = (-Math.random() * 20) + 's';
+
+  // 第三層：小幅 bob
   const bobLayer = document.createElement('div');
   bobLayer.className = 'fish-bob';
+  bobLayer.style.animationDelay = (Math.random() * 2) + 's';
+
+  // 第四層：尾巴擺動（套用支點）
+  const swimLayer = document.createElement('div');
+  swimLayer.className = 'fish-swim';
+  swimLayer.style.setProperty('--pivot-x', (pivotX * 100) + '%');
+  swimLayer.style.setProperty('--pivot-y', (pivotY * 100) + '%');
+  // 擺動週期隨機（0.6~1.2 秒），每條魚節奏不同
+  swimLayer.style.animationDuration = (0.6 + Math.random() * 0.6) + 's';
 
   const img = document.createElement('img');
   img.src = image;
   img.className = 'fish-img';
   img.draggable = false;
 
-  // 尺寸倍率：小=1（原本）、中=2、大=3
+  // 尺寸倍率：小=1、中=2、大=3
   const sizeMultiplier = sizeLevel === 'large' ? 3 : sizeLevel === 'medium' ? 2 : 1;
   const baseScale = 0.7 + Math.random() * 0.7;
   const size = 100 * baseScale * sizeMultiplier;
   img.style.width = size + 'px';
   img.style.height = size + 'px';
 
-  bobLayer.appendChild(img);
-  wrap.appendChild(bobLayer);
+  swimLayer.appendChild(img);
+  bobLayer.appendChild(swimLayer);
+  vfloatLayer.appendChild(bobLayer);
+  wrap.appendChild(vfloatLayer);
 
-  const topVh = 12 + Math.random() * 55;
-  wrap.style.top = topVh + 'vh';
+  // 起始 top 用 35vh（中間區域），垂直動畫會讓它上下飄
+  wrap.style.top = '35vh';
 
   // 一個來回（左→右→左）的時間：12~20 秒，無限循環
   const roundDuration = 12 + Math.random() * 8;
   wrap.style.animationDuration = roundDuration + 's';
-
-  bobLayer.style.animationDelay = (Math.random() * 2) + 's';
 
   swimmingFishes.add(wrap);
 
@@ -1652,6 +1765,8 @@ if (isConfigured) {
       image: data.image,
       headDirection: data.headDirection || 'left',
       sizeLevel: data.sizeLevel || 'small',
+      pivotX: data.pivotX ?? 0.8,
+      pivotY: data.pivotY ?? 0.5,
       ownerId: data.ownerId || 'anonymous',
       likes: data.likes || 0,
       dislikes: data.dislikes || 0,
@@ -1679,38 +1794,35 @@ if (isConfigured) {
     const data = snap.val();
     if (!fishDB[id] || !data) return;
 
-    // 判斷哪些欄位變了
     const oldFish = fishDB[id];
     const nameChanged  = oldFish.name !== data.name;
     const imageChanged = oldFish.image !== data.image;
     const headChanged  = oldFish.headDirection !== data.headDirection;
     const sizeChanged  = (oldFish.sizeLevel || 'small') !== (data.sizeLevel || 'small');
+    const pivotChanged = (oldFish.pivotX !== data.pivotX) || (oldFish.pivotY !== data.pivotY);
 
-    // 更新 cache
     fishDB[id] = {
       ...oldFish,
       name: data.name || '無名小卒',
       image: data.image,
       headDirection: data.headDirection || 'left',
       sizeLevel: data.sizeLevel || 'small',
+      pivotX: data.pivotX ?? 0.8,
+      pivotY: data.pivotY ?? 0.5,
       likes: data.likes || 0,
       dislikes: data.dislikes || 0,
     };
 
-    // 如果是「外觀」變了（圖、頭、大小）→ 把畫面上正在游的魚換掉
-    if (imageChanged || headChanged || sizeChanged) {
+    if (imageChanged || headChanged || sizeChanged || pivotChanged) {
       const swimmingEls = aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${id}"]`);
+      const hadAny = swimmingEls.length > 0;
       swimmingEls.forEach(el => {
         swimmingFishes.delete(el);
         el.remove();
       });
-      // 如果有正在游（有畫面上）→ 重新放新版的
-      if (swimmingEls.length > 0) {
-        releaseFish(fishDB[id]);
-      }
+      if (hadAny) releaseFish(fishDB[id]);
     }
 
-    // 浮卡開著 → 即時刷新
     if (currentCardFishId === id) refreshCard();
   });
   onChildRemoved(fishesRef, (snap) => {
@@ -1747,9 +1859,48 @@ let startX = 0, startY = 0;
 let currentColor = '#002844';
 let currentTool = 'pen';
 let headDirection = 'left';
-let fishSize = 'small';      // 'small' | 'medium' | 'large'
-let editingFishId = null;    // 目前是不是在編輯某條魚（null = 新增）
+let fishSize = 'small';
+let editingFishId = null;
 let snapshot = null;
+let pivotX = 0.5;   // 支點 X 相對位置（0~1）
+let pivotY = 0.5;   // 支點 Y 相對位置（0~1）
+
+/* ============================================================
+   支點拖曳（標尾巴）
+   ============================================================ */
+const pivotMarker = document.getElementById('pivot-marker');
+let pivotDragging = false;
+
+function setPivotPosition(relX, relY) {
+  pivotX = Math.max(0.05, Math.min(0.95, relX));
+  pivotY = Math.max(0.05, Math.min(0.95, relY));
+  pivotMarker.style.left = (pivotX * 100) + '%';
+  pivotMarker.style.top  = (pivotY * 100) + '%';
+}
+
+function pivotPointerDown(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  pivotDragging = true;
+  pivotMarker.classList.add('dragged');
+}
+function pivotPointerMove(e) {
+  if (!pivotDragging) return;
+  e.preventDefault();
+  const rect = canvasWrap.getBoundingClientRect();
+  const point = (e.touches && e.touches[0]) || e;
+  const relX = (point.clientX - rect.left) / rect.width;
+  const relY = (point.clientY - rect.top) / rect.height;
+  setPivotPosition(relX, relY);
+}
+function pivotPointerUp() { pivotDragging = false; }
+
+pivotMarker.addEventListener('mousedown', pivotPointerDown);
+pivotMarker.addEventListener('touchstart', pivotPointerDown, { passive: false });
+window.addEventListener('mousemove', pivotPointerMove);
+window.addEventListener('touchmove', pivotPointerMove, { passive: false });
+window.addEventListener('mouseup', pivotPointerUp);
+window.addEventListener('touchend', pivotPointerUp);
 
 // 尺寸選擇
 const sizePickBtns = document.querySelectorAll('.size-pick button');
@@ -1926,10 +2077,11 @@ function openDrawModalNew() {
   fishName.value = '';
   setFishSize('small');
   setHeadDirection('left');
+  setPivotPosition(0.8, 0.5);  // 預設支點在右側中間（適合頭朝左的魚，尾巴大約在右側）
+  pivotMarker.classList.remove('dragged');
   undoStack.length = 0;
   redoStack.length = 0;
   updateUndoRedoButtons();
-  // 改標題
   document.querySelector('#draw-modal .modal-title').innerHTML = '畫一隻 <em>魚</em>';
   document.getElementById('btn-submit').textContent = '讓牠游動 →';
   openModal('draw-modal');
@@ -1942,22 +2094,21 @@ function openDrawModalEdit(fish) {
   fishName.value = fish.name === '無名小卒' ? '' : fish.name;
   setFishSize(fish.sizeLevel || 'small');
   setHeadDirection(fish.headDirection || 'left');
+  // 載入該魚的支點位置（沒存過就用預設）
+  setPivotPosition(fish.pivotX ?? 0.8, fish.pivotY ?? 0.5);
+  pivotMarker.classList.add('dragged'); // 編輯時不顯示提示文字
   undoStack.length = 0;
   redoStack.length = 0;
   updateUndoRedoButtons();
-  // 改標題
   document.querySelector('#draw-modal .modal-title').innerHTML = '編輯 <em>' + escapeHTML(fish.name) + '</em>';
   document.getElementById('btn-submit').textContent = '儲存修改 →';
   openModal('draw-modal');
 
-  // 把原圖載到 canvas
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
-    // 等 modal 渲染完，畫布尺寸才正確
     setTimeout(() => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // 等比例繪製到 canvas 中央
       const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.8;
       const w = img.width * scale;
       const h = img.height * scale;
@@ -2132,7 +2283,27 @@ function getTrimmedCanvas(srcCanvas) {
   out.width = Math.round(cw * scale);
   out.height = Math.round(ch * scale);
   out.getContext('2d').drawImage(srcCanvas, left, top, cw, ch, 0, 0, out.width, out.height);
-  return out;
+  // 回傳 bounding box 資訊，方便外部換算支點位置
+  return {
+    canvas: out,
+    box: { left, top, right, bottom, srcW: w, srcH: h }
+  };
+}
+
+// 把畫布上的支點位置 → 換算成裁切後圖片上的相對位置
+function calcPivotInTrimmed(box) {
+  // pivotX/Y 是相對於整個 canvas（0~1）
+  const absX = pivotX * box.srcW;
+  const absY = pivotY * box.srcH;
+  // 換算成裁切後的相對位置
+  const cw = box.right - box.left + 1;
+  const ch = box.bottom - box.top + 1;
+  let newX = (absX - box.left) / cw;
+  let newY = (absY - box.top) / ch;
+  // 限制 0~1（萬一支點在裁切範圍外）
+  newX = Math.max(0, Math.min(1, newX));
+  newY = Math.max(0, Math.min(1, newY));
+  return { pivotX: newX, pivotY: newY };
 }
 
 submitBtn.addEventListener('click', async () => {
@@ -2141,8 +2312,13 @@ submitBtn.addEventListener('click', async () => {
     return;
   }
   const name = (fishName.value || '').trim() || '無名小卒';
-  const trimmed = getTrimmedCanvas(canvas);
-  const dataUrl = trimmed.toDataURL('image/png');
+  const result = getTrimmedCanvas(canvas);
+  if (!result) {
+    showToast('找不到畫的內容 😢');
+    return;
+  }
+  const dataUrl = result.canvas.toDataURL('image/png');
+  const newPivot = calcPivotInTrimmed(result.box);
 
   // ===== 編輯模式：更新現有的魚 =====
   if (editingFishId) {
@@ -2152,8 +2328,7 @@ submitBtn.addEventListener('click', async () => {
       return;
     }
     if (!isConfigured) {
-      fishDB[editingFishId] = { ...oldFish, name, image: dataUrl, headDirection, sizeLevel: fishSize };
-      // 把畫面上正在游的也換掉
+      fishDB[editingFishId] = { ...oldFish, name, image: dataUrl, headDirection, sizeLevel: fishSize, pivotX: newPivot.pivotX, pivotY: newPivot.pivotY };
       aquarium.querySelectorAll(`.fish-wrap[data-fish-id="${editingFishId}"]`).forEach(el => {
         swimmingFishes.delete(el);
         el.remove();
@@ -2167,13 +2342,14 @@ submitBtn.addEventListener('click', async () => {
     submitBtn.disabled = true;
     submitBtn.textContent = '更新中...';
     try {
-      // 用 runTransaction 確保不會洗掉 likes/dislikes
       await runTransaction(ref(db, 'fishes/' + editingFishId), (data) => {
         if (!data) return data;
         data.name = name;
         data.image = dataUrl;
         data.headDirection = headDirection;
         data.sizeLevel = fishSize;
+        data.pivotX = newPivot.pivotX;
+        data.pivotY = newPivot.pivotY;
         return data;
       });
       closeModal('draw-modal');
@@ -2189,10 +2365,10 @@ submitBtn.addEventListener('click', async () => {
     return;
   }
 
-  // ===== 新增模式：新建一條魚 =====
+  // ===== 新增模式 =====
   if (!isConfigured) {
     const localId = 'local_' + Date.now() + Math.random().toString(36).slice(2, 6);
-    const data = { id: localId, name, image: dataUrl, headDirection, sizeLevel: fishSize, ownerId: USER_ID, likes: 0, dislikes: 0, createdAt: Date.now() };
+    const data = { id: localId, name, image: dataUrl, headDirection, sizeLevel: fishSize, pivotX: newPivot.pivotX, pivotY: newPivot.pivotY, ownerId: USER_ID, likes: 0, dislikes: 0, createdAt: Date.now() };
     fishDB[localId] = data;
     releaseFish(data);
     closeModal('draw-modal');
@@ -2206,6 +2382,8 @@ submitBtn.addEventListener('click', async () => {
     await push(fishesRef, {
       name, image: dataUrl, headDirection,
       sizeLevel: fishSize,
+      pivotX: newPivot.pivotX,
+      pivotY: newPivot.pivotY,
       ownerId: USER_ID,
       likes: 0, dislikes: 0,
       createdAt: Date.now()
@@ -2472,6 +2650,52 @@ async function deleteFish(id, name) {
 }
 
 /* ============================================================
+   視角切換：世界魚缸 / 我的魚缸（自己畫的 + 收藏的）
+   ============================================================ */
+let viewMode = 'world'; // 'world' | 'mine'
+
+function getMyTankFishIds() {
+  const myDrawn = Object.values(fishDB).filter(f => f.ownerId === USER_ID).map(f => f.id);
+  const favs = getFavorites();
+  return new Set([...myDrawn, ...favs]);
+}
+
+function switchView(mode) {
+  if (viewMode === mode) return;
+  viewMode = mode;
+  document.querySelectorAll('.view-toggle').forEach(b => b.classList.toggle('active', b.dataset.view === mode));
+
+  // 清空畫面上所有魚
+  aquarium.querySelectorAll('.fish-wrap').forEach(el => {
+    swimmingFishes.delete(el);
+    el.remove();
+  });
+
+  // 依照模式重新放魚
+  if (mode === 'world') {
+    // 世界魚缸：放最新的 40 條（任何人的魚）
+    const all = Object.values(fishDB).sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_FISHES_IN_TANK);
+    all.reverse().forEach((f, i) => setTimeout(() => releaseFish(f), i * 60));
+    showToast('🌍 切換到世界魚缸');
+  } else {
+    // 我的魚缸：放自己畫的 + 收藏的
+    const myIds = getMyTankFishIds();
+    const mine = Object.values(fishDB).filter(f => myIds.has(f.id))
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, MAX_FISHES_IN_TANK);
+    if (mine.length === 0) {
+      showToast('🐠 我的魚缸是空的，去畫一隻或收藏喜歡的魚吧！');
+    } else {
+      mine.reverse().forEach((f, i) => setTimeout(() => releaseFish(f), i * 60));
+      showToast(`🐠 切換到我的魚缸（${mine.length} 條）`);
+    }
+  }
+}
+
+document.getElementById('view-world').addEventListener('click', () => switchView('world'));
+document.getElementById('view-mine').addEventListener('click', () => switchView('mine'));
+
+/* ============================================================
    點魚浮卡
    ============================================================ */
 const fishCard       = document.getElementById('fish-card');
@@ -2561,6 +2785,9 @@ async function voteFish(id, type, currentVote) {
     showToast('投票失敗 😢');
   }
 }
+
+// 點浮卡內部不要關閉浮卡（讓按鈕能正常響應）
+fishCard.addEventListener('click', (e) => e.stopPropagation());
 
 aquarium.addEventListener('click', (e) => {
   if (currentCardFishId) hideFishCard();
