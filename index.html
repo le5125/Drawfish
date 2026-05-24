@@ -1161,8 +1161,8 @@
   <div class="modal">
     <button class="btn-close" data-close="draw-modal">✕</button>
     <div class="modal-header">
-      <div class="modal-title">畫一隻 <em>魚</em></div>
-      <div class="modal-hint">DRAW · NAME · RELEASE</div>
+      <div class="modal-title">畫一隻 <em>魚</em>DRAW · NAME · RELEASE</div>
+      <div class="modal-hint"></div>
     </div>
 
     <!-- 工具列（畫布上方） -->
@@ -1183,7 +1183,7 @@
       </div>
       <div class="toolbar-divider"></div>
       <div class="toolbar-group">
-        <span class="toolbar-label">工具</span>
+
         <button class="tool-btn active" data-tool="pen" title="筆刷">✏️</button>
         <button class="tool-btn" data-tool="eraser" title="橡皮擦">🧽</button>
         <button class="tool-btn" data-tool="line" title="直線">📏</button>
@@ -1231,8 +1231,8 @@
   <div class="modal">
     <button class="btn-close" data-close="list-modal">✕</button>
     <div class="modal-header">
-      <div class="modal-title" id="list-title">排行榜</div>
-      <div class="modal-hint" id="list-hint">TOP FISHES</div>
+      <div class="modal-title" id="list-title">排行榜 .TOP FISHES</div>
+      <div class="modal-hint" id="list-hint"></div>
     </div>
     <div class="list-tabs" id="my-tabs" style="display:none">
       <div class="tab active" data-mytab="mine">我畫的</div>
@@ -1889,8 +1889,8 @@ document.getElementById('open-leaderboard').addEventListener('click', () => {
 });
 document.getElementById('open-mytank').addEventListener('click', () => {
   currentListMode = 'mine';
-  listTitle.innerHTML = '我的<em>魚缸</em>';
-  listHint.textContent = 'MY TANK';
+  listTitle.innerHTML = '我的<em>魚缸</em>MY TANK';
+  listHint.textContent = '';
   myTabs.style.display = 'flex';
   myTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mytab === 'mine'));
   renderList();
