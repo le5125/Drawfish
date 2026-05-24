@@ -385,7 +385,13 @@
     line-height: 1;
   }
   .modal-title em { font-weight: 500; color: var(--coral); }
- 
+  .modal-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #7a8590;
+  }
 
   .btn-close {
     position: absolute;
@@ -1156,7 +1162,7 @@
     <button class="btn-close" data-close="draw-modal">✕</button>
     <div class="modal-header">
       <div class="modal-title">畫一隻 <em>魚</em></div>
-    
+      <div class="modal-hint"></div>
     </div>
 
     <!-- 工具列（畫布上方） -->
@@ -1226,7 +1232,7 @@
     <button class="btn-close" data-close="list-modal">✕</button>
     <div class="modal-header">
       <div class="modal-title" id="list-title">排行榜</div>
-    
+      <div class="modal-hint" id="list-hint"></div>
     </div>
     <div class="list-tabs" id="my-tabs" style="display:none">
       <div class="tab active" data-mytab="mine">我畫的</div>
