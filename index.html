@@ -166,7 +166,7 @@
     box-shadow: inset -1px 0 2px rgba(0,0,0,0.3);
   }
 
-  /* ===== 魚 — 純 CSS animation ===== */
+  /* ===== 魚 — 真．只動尾巴 ===== */
   .fish-wrap {
     position: absolute;
     pointer-events: auto;
@@ -195,7 +195,7 @@
     100%   { transform: translateX(0) scaleX(-1); }
   }
 
-  /* 垂直慢慢浮動（第二層） */
+  /* 垂直慢慢浮動 */
   .fish-vfloat {
     animation: vfloat ease-in-out infinite alternate;
   }
@@ -204,7 +204,7 @@
     100% { transform: translateY(20vh); }
   }
 
-  /* 短週期上下小幅 bob（第三層） */
+  /* 短週期 bob */
   .fish-bob {
     animation: bob 3s ease-in-out infinite alternate;
   }
@@ -213,21 +213,52 @@
     100% { transform: translateY(6px); }
   }
 
-  /* 尾巴擺動（第四層）— 用 transform-origin 控制支點 */
-  .fish-swim {
-    /* --pivot-x 跟 --pivot-y 由 JS 設定（0~100%） */
-    transform-origin: var(--pivot-x, 50%) var(--pivot-y, 50%);
+  /* 魚的容器（身體 + 尾巴疊在一起） */
+  .fish-body-wrap {
+    position: relative;
+    display: block;
+    /* drop-shadow 放在這層，避免被 clip-path 切掉 */
+    filter: drop-shadow(0 6px 14px rgba(0, 40, 68, 0.35));
+  }
+
+  /* 身體層：完全靜止，但裁掉「支點之後」的部分 */
+  /* 注意：clip-path 切口處往中間延 2px，讓身體跟尾巴有重疊，避免縫 */
+  /* 頭朝左：身體在左邊（0~pivot+overlap），尾巴在右邊（pivot-overlap~100%） */
+  .fish-wrap.swim-left .fish-body {
+    -webkit-clip-path: inset(0 calc(100% - var(--pivot-x, 70%) - 2px) 0 0);
+    clip-path: inset(0 calc(100% - var(--pivot-x, 70%) - 2px) 0 0);
+  }
+  .fish-wrap.swim-left .fish-tail {
+    -webkit-clip-path: inset(0 0 0 calc(var(--pivot-x, 70%) - 2px));
+    clip-path: inset(0 0 0 calc(var(--pivot-x, 70%) - 2px));
+    transform-origin: var(--pivot-x, 70%) var(--pivot-y, 50%);
+  }
+
+  /* 頭朝右：身體在右邊（pivot~100%），尾巴在左邊（0~pivot） */
+  .fish-wrap.swim-right .fish-body {
+    -webkit-clip-path: inset(0 0 0 calc(var(--pivot-x, 30%) - 2px));
+    clip-path: inset(0 0 0 calc(var(--pivot-x, 30%) - 2px));
+  }
+  .fish-wrap.swim-right .fish-tail {
+    -webkit-clip-path: inset(0 calc(100% - var(--pivot-x, 30%) - 2px) 0 0);
+    clip-path: inset(0 calc(100% - var(--pivot-x, 30%) - 2px) 0 0);
+    transform-origin: var(--pivot-x, 30%) var(--pivot-y, 50%);
+  }
+
+  /* 共用：身體跟尾巴的視覺屬性（drop-shadow 移到父層了） */
+  .fish-body {
+    display: block;
+    object-fit: contain;
+  }
+  .fish-tail {
+    position: absolute;
+    inset: 0;
+    object-fit: contain;
     animation: tailSwish ease-in-out infinite alternate;
   }
   @keyframes tailSwish {
-    0%   { transform: rotate(-6deg); }
-    100% { transform: rotate(6deg); }
-  }
-
-  .fish-img {
-    display: block;
-    object-fit: contain;
-    filter: drop-shadow(0 6px 14px rgba(0, 40, 68, 0.35));
+    0%   { transform: rotate(-10deg); }
+    100% { transform: rotate(10deg); }
   }
 
   /* ===== HUD ===== */
@@ -1608,7 +1639,7 @@ function releaseFish(fishData) {
     }
   }
 
-  const { id, image, headDirection = 'left', sizeLevel = 'small', pivotX = 0.5, pivotY = 0.5 } = fishData;
+  const { id, image, headDirection = 'left', sizeLevel = 'small', pivotX = 0.7, pivotY = 0.5 } = fishData;
 
   const wrap = document.createElement('div');
   wrap.className = 'fish-wrap';
@@ -1618,7 +1649,6 @@ function releaseFish(fishData) {
   // 第二層：垂直慢慢浮動
   const vfloatLayer = document.createElement('div');
   vfloatLayer.className = 'fish-vfloat';
-  // 每條魚的浮動週期不同（15~25 秒），起始相位隨機
   vfloatLayer.style.animationDuration = (15 + Math.random() * 10) + 's';
   vfloatLayer.style.animationDelay = (-Math.random() * 20) + 's';
 
@@ -1627,32 +1657,49 @@ function releaseFish(fishData) {
   bobLayer.className = 'fish-bob';
   bobLayer.style.animationDelay = (Math.random() * 2) + 's';
 
-  // 第四層：尾巴擺動（套用支點）
-  const swimLayer = document.createElement('div');
-  swimLayer.className = 'fish-swim';
-  swimLayer.style.setProperty('--pivot-x', (pivotX * 100) + '%');
-  swimLayer.style.setProperty('--pivot-y', (pivotY * 100) + '%');
-  // 擺動週期隨機（0.6~1.2 秒），每條魚節奏不同
-  swimLayer.style.animationDuration = (0.6 + Math.random() * 0.6) + 's';
+  // 第四層：魚的容器（兩張圖疊在一起）
+  const bodyWrap = document.createElement('div');
+  bodyWrap.className = 'fish-body-wrap';
 
-  const img = document.createElement('img');
-  img.src = image;
-  img.className = 'fish-img';
-  img.draggable = false;
-
-  // 尺寸倍率：小=1、中=2、大=3
+  // 尺寸倍率
   const sizeMultiplier = sizeLevel === 'large' ? 3 : sizeLevel === 'medium' ? 2 : 1;
   const baseScale = 0.7 + Math.random() * 0.7;
   const size = 100 * baseScale * sizeMultiplier;
-  img.style.width = size + 'px';
-  img.style.height = size + 'px';
+  bodyWrap.style.width = size + 'px';
+  bodyWrap.style.height = size + 'px';
 
-  swimLayer.appendChild(img);
-  bobLayer.appendChild(swimLayer);
+  // 設定支點變數（給兩張圖的 clip-path 跟 transform-origin 共用）
+  // 注意：因為魚游動時頭朝向會翻轉（scaleX(-1)），
+  // 支點 X 在 CSS 上始終以「圖片左邊算起」為基準
+  // 頭朝左的魚 → 尾巴在右邊（pivot-x 比較大，例如 70%）
+  // 頭朝右的魚 → 也是用同樣的 pivot-x（因為畫的時候就決定了）
+  bodyWrap.style.setProperty('--pivot-x', (pivotX * 100) + '%');
+  bodyWrap.style.setProperty('--pivot-y', (pivotY * 100) + '%');
+
+  // 身體圖（前半段，靜止）
+  const bodyImg = document.createElement('img');
+  bodyImg.src = image;
+  bodyImg.className = 'fish-body';
+  bodyImg.draggable = false;
+  bodyImg.style.width = size + 'px';
+  bodyImg.style.height = size + 'px';
+
+  // 尾巴圖（後半段，繞支點擺動）
+  const tailImg = document.createElement('img');
+  tailImg.src = image;
+  tailImg.className = 'fish-tail';
+  tailImg.draggable = false;
+  tailImg.style.width = size + 'px';
+  tailImg.style.height = size + 'px';
+  // 每條魚尾巴擺動週期隨機
+  tailImg.style.animationDuration = (0.5 + Math.random() * 0.5) + 's';
+
+  bodyWrap.appendChild(bodyImg);
+  bodyWrap.appendChild(tailImg);
+  bobLayer.appendChild(bodyWrap);
   vfloatLayer.appendChild(bobLayer);
   wrap.appendChild(vfloatLayer);
 
-  // 起始 top 用 35vh（中間區域），垂直動畫會讓它上下飄
   wrap.style.top = '35vh';
 
   // 一個來回（左→右→左）的時間：12~20 秒，無限循環
