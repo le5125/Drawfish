@@ -1903,6 +1903,13 @@ function isOwnerIdDbSafe(id) {
   return !/[\.\#\$\[\]\s]/.test(id);
 }
 
+/** 攻擊殘留的 score 欄位會讓 Firebase 規則拒絕整筆更新 */
+function stripLegacyFishFields(data) {
+  if (!data || typeof data !== 'object') return data;
+  delete data.score;
+  return data;
+}
+
 // 產生訪客代碼：guest_xxxxxx
 function generateGuestId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 去掉容易混淆的字
@@ -3001,6 +3008,7 @@ submitBtn.addEventListener('click', async () => {
     try {
       await runTransaction(ref(db, 'fishes/' + editingFishId), (data) => {
         if (!data) return data;
+        stripLegacyFishFields(data);
         data.name = name;
         data.image = dataUrl;
         data.headDirection = headDirection;
@@ -3533,6 +3541,7 @@ renameConfirm.addEventListener('click', async () => {
     try {
       await runTransaction(ref(db, 'fishes/' + fish.id), (data) => {
         if (!data) return data;
+        stripLegacyFishFields(data);
         if (data.ownerId === oldId) data.ownerId = newId;
         return data;
       });
@@ -3642,6 +3651,7 @@ async function voteFish(id, type, currentVote) {
   try {
     await runTransaction(ref(db, 'fishes/' + id), (data) => {
       if (data === null) return data;
+      stripLegacyFishFields(data);
       data.likes    = Math.max(0, Math.min(99999, sanitizeVoteCount(data.likes) + likeDelta));
       data.dislikes = Math.max(0, Math.min(99999, sanitizeVoteCount(data.dislikes) + dislikeDelta));
       return data;
