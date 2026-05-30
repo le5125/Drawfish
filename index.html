@@ -1892,9 +1892,15 @@ function validateUserId(id) {
   return { ok: true, value: trimmed };
 }
 
-// 標準化代碼（英文小寫，方便比對）
+// 標準化代碼（僅英文轉小寫，中文代碼如「迷路的迷鹿」維持原樣）
 function normalizeUserId(id) {
-  return id.trim().toLowerCase();
+  return id.trim().replace(/[A-Z]/g, (c) => c.toLowerCase());
+}
+
+function isOwnerIdDbSafe(id) {
+  if (/^guest_[A-HJ-NP-Z2-9]{6}$/.test(id)) return true;
+  if (id.length < 3 || id.length > 20) return false;
+  return !/[\.\#\$\[\]\s]/.test(id);
 }
 
 // 產生訪客代碼：guest_xxxxxx
@@ -2931,8 +2937,8 @@ function validateFishPayload({ name, ownerId, image, headDirection, sizeLevel })
   const idCheck = validateUserId(ownerId);
   if (!idCheck.ok) return '身份代碼格式不符：' + idCheck.reason;
   const normId = normalizeUserId(idCheck.value);
-  if (!/^(guest_[A-HJ-NP-Z2-9]{6}|[a-z0-9_\-\u4e00-\u9fa5]{3,20})$/.test(normId)) {
-    return '身份代碼無法寫入資料庫，請到「改名」換成 3~20 字中英數';
+  if (!isOwnerIdDbSafe(normId)) {
+    return '身份代碼無法寫入資料庫（3~20 字，不可含空格或 [. # $ [ ]）';
   }
   if (name.length < 1 || name.length > 20) return '魚的名字需 1～20 字';
   if (/複製魚|大軍/.test(name)) return '此名稱無法使用';
@@ -2945,7 +2951,7 @@ function validateFishPayload({ name, ownerId, image, headDirection, sizeLevel })
 
 function firebaseSubmitErrorMessage(err) {
   if (err?.code === 'PERMISSION_DENIED') {
-    return '資料庫拒絕寫入（常見：身份代碼或圖片不符規則）';
+    return '資料庫拒絕寫入';
   }
   return '送出失敗，請稍後再試';
 }
