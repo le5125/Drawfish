@@ -1942,6 +1942,16 @@ function setVote(id, type) {
 
 const fishDB = {};
 
+/** 過濾攻擊殘留的異常讚數（例如 -1e+104） */
+function sanitizeVoteCount(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || !Number.isInteger(v)) return 0;
+  return Math.max(0, Math.min(99999, v));
+}
+function getFishScore(fish) {
+  return sanitizeVoteCount(fish.likes) - sanitizeVoteCount(fish.dislikes);
+}
+
 /* ============================================================
    歡迎/登入流程
    ============================================================ */
@@ -2330,8 +2340,8 @@ if (isConfigured) {
       pivotX: data.pivotX ?? 0.8,
       pivotY: data.pivotY ?? 0.5,
       ownerId: data.ownerId || 'anonymous',
-      likes: data.likes || 0,
-      dislikes: data.dislikes || 0,
+      likes: sanitizeVoteCount(data.likes),
+      dislikes: sanitizeVoteCount(data.dislikes),
       createdAt: data.createdAt || 0,
     };
 
@@ -2371,8 +2381,8 @@ if (isConfigured) {
       sizeLevel: data.sizeLevel || 'small',
       pivotX: data.pivotX ?? 0.8,
       pivotY: data.pivotY ?? 0.5,
-      likes: data.likes || 0,
-      dislikes: data.dislikes || 0,
+      likes: sanitizeVoteCount(data.likes),
+      dislikes: sanitizeVoteCount(data.dislikes),
     };
 
     if (imageChanged || headChanged || sizeChanged || pivotChanged) {
@@ -3103,7 +3113,7 @@ function renderList() {
 
   if (currentListMode === 'leaderboard') {
     // 按分數排序
-    arr.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+    arr.sort((a, b) => getFishScore(b) - getFishScore(a));
     // 取前 20 + 倒數 20
     if (arr.length <= 40) {
       topArr = arr;
@@ -3161,7 +3171,9 @@ function makeCard(fish, idx, section) {
   const card = document.createElement('div');
   card.className = 'fish-card';
   const isMine = fish.ownerId === USER_ID;
-  const score = fish.likes - fish.dislikes;
+  const likes = sanitizeVoteCount(fish.likes);
+  const dislikes = sanitizeVoteCount(fish.dislikes);
+  const score = likes - dislikes;
   const fav = isFavorite(fish.id);
 
   let rankHTML = '';
@@ -3197,10 +3209,10 @@ function makeCard(fish, idx, section) {
     <div class="fc-score ${scoreCls}">${scoreStr}</div>
     <div class="fc-vote-btns">
       <button class="vote-btn like-btn ${(getVotes()[fish.id] === 'like') ? 'active' : ''}" title="按讚">
-        👍 <span class="vote-count">${fish.likes}</span>
+        👍 <span class="vote-count">${likes}</span>
       </button>
       <button class="vote-btn dislike-btn ${(getVotes()[fish.id] === 'dislike') ? 'active' : ''}" title="倒讚">
-        👎 <span class="vote-count">${fish.dislikes}</span>
+        👎 <span class="vote-count">${dislikes}</span>
       </button>
     </div>
   `;
@@ -3516,9 +3528,11 @@ function refreshCard() {
   const fish = fishDB[currentCardFishId];
   if (!fish) return;
   cardName.textContent = fish.name;
-  cardLikes.textContent = fish.likes;
-  cardDislikes.textContent = fish.dislikes;
-  const score = fish.likes - fish.dislikes;
+  const likes = sanitizeVoteCount(fish.likes);
+  const dislikes = sanitizeVoteCount(fish.dislikes);
+  cardLikes.textContent = likes;
+  cardDislikes.textContent = dislikes;
+  const score = likes - dislikes;
   cardScore.textContent = (score >= 0 ? '+' : '') + score;
   const votes = getVotes();
   const myVote = votes[currentCardFishId];
@@ -3554,8 +3568,8 @@ async function voteFish(id, type, currentVote) {
   }
   if (!isConfigured) {
     if (!fishDB[id]) return;
-    fishDB[id].likes    = Math.max(0, fishDB[id].likes + likeDelta);
-    fishDB[id].dislikes = Math.max(0, fishDB[id].dislikes + dislikeDelta);
+    fishDB[id].likes    = Math.max(0, Math.min(99999, sanitizeVoteCount(fishDB[id].likes) + likeDelta));
+    fishDB[id].dislikes = Math.max(0, Math.min(99999, sanitizeVoteCount(fishDB[id].dislikes) + dislikeDelta));
     setVote(id, newVote);
     if (currentCardFishId === id) refreshCard();
     return;
@@ -3563,8 +3577,8 @@ async function voteFish(id, type, currentVote) {
   try {
     await runTransaction(ref(db, 'fishes/' + id), (data) => {
       if (data === null) return data;
-      data.likes    = Math.max(0, (data.likes || 0)    + likeDelta);
-      data.dislikes = Math.max(0, (data.dislikes || 0) + dislikeDelta);
+      data.likes    = Math.max(0, Math.min(99999, sanitizeVoteCount(data.likes) + likeDelta));
+      data.dislikes = Math.max(0, Math.min(99999, sanitizeVoteCount(data.dislikes) + dislikeDelta));
       return data;
     });
     setVote(id, newVote);
