@@ -1918,6 +1918,16 @@ function clearCurrentUserId() {
 }
 
 let USER_ID = getCurrentUserId();  // 可能是 null（第一次來）
+if (USER_ID) {
+  const bootId = validateUserId(USER_ID);
+  if (bootId.ok) {
+    USER_ID = normalizeUserId(bootId.value);
+    setCurrentUserId(USER_ID);
+  } else {
+    clearCurrentUserId();
+    USER_ID = null;
+  }
+}
 
 function getFavorites() {
   try { return JSON.parse(localStorage.getItem('drawfish_favs') || '[]'); } catch { return []; }
@@ -2898,6 +2908,48 @@ function calcPivotInTrimmed(box) {
   return { pivotX: newX, pivotY: newY };
 }
 
+const MAX_IMAGE_DATA_URL_LEN = 195000; // 須小於 Firebase 規則上限
+
+function exportFishPngDataUrl(sourceCanvas) {
+  let canvas = sourceCanvas;
+  let dataUrl = canvas.toDataURL('image/png');
+  let scale = 0.85;
+  while (dataUrl.length > MAX_IMAGE_DATA_URL_LEN && scale >= 0.25) {
+    const smaller = document.createElement('canvas');
+    smaller.width = Math.max(32, Math.round(canvas.width * scale));
+    smaller.height = Math.max(32, Math.round(canvas.height * scale));
+    smaller.getContext('2d').drawImage(canvas, 0, 0, smaller.width, smaller.height);
+    canvas = smaller;
+    dataUrl = canvas.toDataURL('image/png');
+    scale *= 0.85;
+  }
+  return dataUrl;
+}
+
+function validateFishPayload({ name, ownerId, image, headDirection, sizeLevel }) {
+  if (!ownerId) return '請先設定你的身份代碼';
+  const idCheck = validateUserId(ownerId);
+  if (!idCheck.ok) return '身份代碼格式不符：' + idCheck.reason;
+  const normId = normalizeUserId(idCheck.value);
+  if (!/^(guest_[A-HJ-NP-Z2-9]{6}|[a-z0-9_\-\u4e00-\u9fa5]{3,20})$/.test(normId)) {
+    return '身份代碼無法寫入資料庫，請到「改名」換成 3~20 字中英數';
+  }
+  if (name.length < 1 || name.length > 20) return '魚的名字需 1～20 字';
+  if (/複製魚|大軍/.test(name)) return '此名稱無法使用';
+  if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(image)) return '圖片格式錯誤';
+  if (image.length > MAX_IMAGE_DATA_URL_LEN) return '圖片太大，請簡化塗鴉後再試';
+  if (!/^(left|right|up)$/.test(headDirection)) return '頭朝向設定錯誤';
+  if (!/^(small|medium|large)$/.test(sizeLevel)) return '尺寸設定錯誤';
+  return null;
+}
+
+function firebaseSubmitErrorMessage(err) {
+  if (err?.code === 'PERMISSION_DENIED') {
+    return '資料庫拒絕寫入（常見：身份代碼或圖片不符規則）';
+  }
+  return '送出失敗，請稍後再試';
+}
+
 submitBtn.addEventListener('click', async () => {
   if (canvasIsBlank()) {
     showToast('畫布是空的喔，先畫一隻魚吧 🐟');
@@ -2909,8 +2961,15 @@ submitBtn.addEventListener('click', async () => {
     showToast('找不到畫的內容 😢');
     return;
   }
-  const dataUrl = result.canvas.toDataURL('image/png');
+  const dataUrl = exportFishPngDataUrl(result.canvas);
   const newPivot = calcPivotInTrimmed(result.box);
+  const payloadErr = validateFishPayload({
+    name, ownerId: USER_ID, image: dataUrl, headDirection, sizeLevel: fishSize,
+  });
+  if (payloadErr) {
+    showToast(payloadErr);
+    return;
+  }
 
   // ===== 編輯模式：更新現有的魚 =====
   if (editingFishId) {
@@ -2949,7 +3008,7 @@ submitBtn.addEventListener('click', async () => {
       editingFishId = null;
     } catch (err) {
       console.error(err);
-      showToast('更新失敗 😢');
+      showToast(firebaseSubmitErrorMessage(err));
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = '儲存修改 →';
@@ -2984,7 +3043,7 @@ submitBtn.addEventListener('click', async () => {
     showToast(`「${name}」游進大海了 🌊`);
   } catch (err) {
     console.error(err);
-    showToast('送出失敗，請檢查 Firebase 設定 😢');
+    showToast(firebaseSubmitErrorMessage(err));
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = '讓牠游動 →';
